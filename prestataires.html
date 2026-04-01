@@ -294,6 +294,51 @@
     border-radius: 50%;
   }
 
+  /* RECAP 5 JOURS */
+  .recap5 {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px 4px;
+    overflow-x: auto;
+  }
+  .recap5-day {
+    flex: 0 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    min-width: 120px;
+  }
+  .recap5-day-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .recap5-day-title.r5-today { color: var(--accent); }
+  .recap5-day-title.r5-tomorrow { color: #FF6B35; }
+  .recap5-day-title.r5-other { color: var(--muted2); }
+  .recap5-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    margin-bottom: 3px;
+    color: var(--text);
+  }
+  .recap5-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .recap5-empty {
+    font-size: 10px;
+    color: var(--muted2);
+    font-style: italic;
+  }
+
   /* PROCHAINS MÉNAGES */
   .next-section {
     padding: 20px 20px 0;
@@ -447,6 +492,8 @@ function renderApp() {
         </div>`).join('')}
     </div>
 
+    ${renderRecap5()}
+
     <div class="tabs">
       <div class="tab ${activeTab==='planning'?'active':''}" onclick="setTab('planning')">Planning</div>
       <div class="tab ${activeTab==='liste'?'active':''}" onclick="setTab('liste')">Prochains ménages</div>
@@ -458,6 +505,33 @@ function renderApp() {
   `;
 
   document.getElementById('app').innerHTML = html;
+}
+
+// ============================================================
+//  RECAP 5 JOURS
+// ============================================================
+function renderRecap5() {
+  const fmtD = d => d.toISOString().slice(0,10);
+  const base = new Date(); base.setHours(0,0,0,0);
+  const days = [0,1,2,3,4].map(i => { const d = new Date(base); d.setDate(d.getDate()+i); return d; });
+
+  let html = `<div class="recap5">`;
+  days.forEach((day, i) => {
+    const menages = allEvents.filter(e => fmtD(new Date(e.end)) === fmtD(day));
+    const cls = i === 0 ? 'r5-today' : i === 1 ? 'r5-tomorrow' : 'r5-other';
+    const label = i === 0 ? "Aujourd'hui" : i === 1 ? 'Demain'
+      : day.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+    const items = menages.length === 0
+      ? `<div class="recap5-empty">Aucun ménage</div>`
+      : menages.map(e => `
+          <div class="recap5-item">
+            <div class="recap5-dot" style="background:${colorMap[e.logement]}"></div>
+            ${shortName(e.logement)}
+          </div>`).join('');
+    html += `<div class="recap5-day"><div class="recap5-day-title ${cls}">🧹 ${label}</div>${items}</div>`;
+  });
+  html += `</div>`;
+  return html;
 }
 
 // ============================================================
