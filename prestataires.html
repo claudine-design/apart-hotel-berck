@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Planning Ménage</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Instrument+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0A0A0A;
+    --surface: #141414;
+    --surface2: #1C1C1C;
+    --border: #333;
+    --text: #F0EDE8;
+    --muted: #555;
+    --muted2: #888;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Instrument Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+  .header-left {}
+  .header-eyebrow {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted2);
+    font-family: 'Syne', sans-serif;
+  }
+  .header-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-top: 2px;
+  }
+  .header-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .nav-btn {
+    width: 32px;
+    height: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s;
+    flex-shrink: 0;
+  }
+  .nav-btn:hover { background: var(--surface2); }
+  .nav-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: capitalize;
+    min-width: 120px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* PLANNING WRAPPER */
+  .planning-outer {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .planning-inner {
+    min-width: max-content;
+    padding-bottom: 40px;
+  }
+
+  /* GRILLE */
+  .grid-header {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .col-name {
+    width: 160px;
+    min-width: 160px;
+    flex-shrink: 0;
+    padding: 10px 14px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted2);
+    border-right: 1px solid var(--border);
+    position: sticky;
+    left: 0;
+    background: var(--bg);
+    z-index: 60;
+  }
+  .day-headers {
+    display: flex;
+  }
+  .day-header {
+    width: 38px;
+    min-width: 38px;
+    text-align: center;
+    padding: 6px 0;
+    font-size: 10px;
+    color: #ccc;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+  }
+  .day-header.is-today {
+    color: #fff;
+  }
+  .day-header .dow {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .day-header .dnum {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'Syne', sans-serif;
+  }
+  .day-header.is-today .dnum {
+    background: #fff;
+    color: #000;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+  }
+  .day-header.is-today .dow { color: var(--muted2); }
+
+  /* LIGNES LOGEMENTS */
+  .row {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    min-height: 48px;
+  }
+  .row:hover { background: #111; }
+  .row-name {
+    width: 160px;
+    min-width: 160px;
+    flex-shrink: 0;
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    position: sticky;
+    left: 0;
+    background: var(--bg);
+    z-index: 10;
+    gap: 7px;
+  }
+  .row:hover .row-name { background: #111; }
+  .color-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .row-name-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+  }
+  .row-cells {
+    display: flex;
+    position: relative;
+    flex: 1;
+  }
+  .day-cell {
+    width: 38px;
+    min-width: 38px;
+    height: 48px;
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+    position: relative;
+  }
+  .day-cell.is-today {
+    background: rgba(255,255,255,0.03);
+  }
+  .day-cell.is-weekend {
+    background: #2A2A2A;
+  }
+
+  /* BARRES DE RÉSERVATION — parallélogramme */
+  .res-bar {
+    position: absolute;
+    top: 5px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 5;
+    cursor: default;
+    letter-spacing: 0.3px;
+    border-radius: 0;
+    outline: 1.5px solid #0A0A0A;
+    /* Parallelogramme : biais gauche ET droit */
+    clip-path: polygon(14px 0%, 100% 0%, calc(100% - 14px) 100%, 0% 100%);
+  }
+  /* Déborde à gauche : pas de biais gauche */
+  .res-bar.nl {
+    clip-path: polygon(0% 0%, 100% 0%, calc(100% - 14px) 100%, 0% 100%);
+    padding-left: 10px;
+  }
+  /* Déborde à droite : pas de biais droite */
+  .res-bar.nr {
+    clip-path: polygon(14px 0%, 100% 0%, 100% 100%, 0% 100%);
+    padding-right: 10px;
+  }
+  /* Déborde des deux côtés */
+  .res-bar.nl.nr {
+    clip-path: none;
+    border-radius: 2px;
+  }
+
+
+  /* LOADER */
+  .loader-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 80px 20px;
+    gap: 16px;
+  }
+  .loader {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--border);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loader-text { font-size: 13px; color: var(--muted2); }
+
+  /* LÉGENDE */
+  .legend {
+    padding: 16px 20px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted2);
+  }
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  /* PROCHAINS MÉNAGES */
+  .next-section {
+    padding: 20px 20px 0;
+    max-width: 600px;
+  }
+  .next-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted2);
+    margin-bottom: 12px;
+  }
+  .next-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .next-bar {
+    width: 4px;
+    height: 36px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .next-info {}
+  .next-logement {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+  .next-date {
+    font-size: 11px;
+    color: var(--muted2);
+  }
+  .next-badge {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-top: 4px;
+  }
+  .tab {
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab.active {
+    color: var(--text);
+    border-bottom-color: #fff;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="loader-wrap">
+    <div class="loader"></div>
+    <div class="loader-text">Chargement du planning…</div>
+  </div>
+</div>
+
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztCQe4w1xEyp7MiiKwAeis3JPiF40ShJOf2xBDEpqRWJepwKAvBrtSU5GZyT6PCDjg/exec';
+
+const COLORS = [
+  '#C8F060','#FF6B35','#4FC3F7','#F472B6','#A78BFA',
+  '#34D399','#FBBF24','#F87171','#38BDF8','#FB923C'
+];
+
+const MOIS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const DOW_FR  = ['D','L','M','M','J','V','S'];
+
+const params   = new URLSearchParams(window.location.search);
+const PRESTA   = (params.get('presta') || '').toLowerCase().trim();
+const PRESTA_D = PRESTA.charAt(0).toUpperCase() + PRESTA.slice(1);
+
+let allEvents = [];
+let colorMap  = {};
+let viewYear, viewMonth;
+let activeTab = 'planning';
+
+async function init() {
+  if (!PRESTA) { showError('Lien invalide. Demande à Claudine ton lien personnel.'); return; }
+
+  const now = new Date();
+  viewYear  = now.getFullYear();
+  viewMonth = now.getMonth();
+
+  try {
+    const res  = await fetch(`${APPS_SCRIPT_URL}?presta=${encodeURIComponent(PRESTA)}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    allEvents = data.events || [];
+    const logements = [...new Set(allEvents.map(e => e.logement))];
+    logements.forEach((l, i) => colorMap[l] = COLORS[i % COLORS.length]);
+    renderApp();
+    setTimeout(() => {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      if (yesterday.getMonth() === viewMonth && yesterday.getFullYear() === viewYear) {
+        const outer = document.querySelector('.planning-outer');
+        if (outer) outer.scrollLeft = Math.max(0, (yesterday.getDate() - 2) * 38 - 40);
+      }
+    }, 150);
+  } catch(err) {
+    showError('Impossible de charger le planning.<br>' + err.message);
+  }
+}
+
+function renderApp() {
+  const logements = [...new Set(allEvents.map(e => e.logement))];
+
+  let html = `
+    <div class="header">
+      <div class="header-left">
+        <div class="header-eyebrow">Apart Hotel Berck</div>
+        <div class="header-name">${PRESTA_D}</div>
+      </div>
+      <div class="header-nav">
+        <button class="nav-btn" onclick="prevMonth()">‹</button>
+        <div class="nav-label" id="nav-label">${MOIS_FR[viewMonth]} ${viewYear}</div>
+        <button class="nav-btn" onclick="nextMonth()">›</button>
+      </div>
+    </div>
+
+    <div class="legend">
+      ${logements.map(l => `
+        <div class="legend-item">
+          <div class="legend-dot" style="background:${colorMap[l]}"></div>
+          ${shortName(l)}
+        </div>`).join('')}
+    </div>
+
+    <div class="tabs">
+      <div class="tab ${activeTab==='planning'?'active':''}" onclick="setTab('planning')">Planning</div>
+      <div class="tab ${activeTab==='liste'?'active':''}" onclick="setTab('liste')">Prochains ménages</div>
+    </div>
+
+    <div id="tab-content">
+      ${activeTab === 'planning' ? renderPlanning(logements) : renderListe(logements)}
+    </div>
+  `;
+
+  document.getElementById('app').innerHTML = html;
+}
+
+// ============================================================
+//  VUE PLANNING (Gantt)
+// ============================================================
+function renderPlanning(logements) {
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // En-têtes jours
+  let dayHeadersHtml = '';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(viewYear, viewMonth, d);
+    const isToday = date.getTime() === today.getTime();
+    const dow = DOW_FR[date.getDay()];
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    dayHeadersHtml += `
+      <div class="day-header${isToday?' is-today':''}${isWeekend?' is-weekend':''}">
+        <span class="dow">${dow}</span>
+        <span class="dnum">${d}</span>
+      </div>`;
+  }
+
+  // Lignes logements
+  let rowsHtml = '';
+  for (const logement of logements) {
+    const color = colorMap[logement];
+    const evs = allEvents.filter(e => e.logement === logement);
+
+    // Cellules vides
+    let cellsHtml = '';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(viewYear, viewMonth, d);
+      const isToday = date.getTime() === today.getTime();
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      cellsHtml += `<div class="day-cell${isToday?' is-today':''}${isWeekend?' is-weekend':''}"></div>`;
+    }
+
+    // Barres de réservation
+    let barsHtml = '';
+    for (const ev of evs) {
+      const evStart = new Date(ev.start);
+      const evEnd   = new Date(ev.end);
+      const mStart  = new Date(viewYear, viewMonth, 1);
+      const mEnd    = new Date(viewYear, viewMonth, daysInMonth + 1);
+
+      if (evEnd <= mStart || evStart >= mEnd) continue;
+
+      const clampStart = evStart < mStart ? mStart : evStart;
+      const clampEnd   = evEnd   > mEnd   ? mEnd   : evEnd;
+
+      const startDay = clampStart.getDate();
+      const duration = Math.round((clampEnd - clampStart) / 86400000);
+      if (duration <= 0) continue;
+
+      const fname = (ev.summary || '').split(' ')[0];
+      const textColor = darkOrLight(color);
+
+      const startsHere = evStart >= mStart;
+      const endsHere   = evEnd <= mEnd;
+
+      // Check-in au milieu du jour d'arrivée, check-out au milieu du jour de départ
+      const HALF_CI = 3;
+      const HALF_CO = 34;
+      const ciDay = evStart.getDate();
+      const coDay = new Date(ev.end).getDate();
+
+      const adjLeft  = startsHere ? (ciDay - 1) * 38 + HALF_CI : (startDay - 1) * 38;
+      const adjRight = endsHere   ? (coDay  - 1) * 38 + HALF_CO : (startDay - 1) * 38 + duration * 38;
+      const adjWidth = adjRight - adjLeft;
+
+      if (adjWidth > 0) {
+        const nl = !startsHere ? 'nl' : '';
+        const nr = !endsHere   ? 'nr' : '';
+        const cls = [nl, nr].filter(Boolean).join(' ');
+        barsHtml += `<div class="res-bar ${cls}" style="left:${adjLeft}px;width:${adjWidth}px;background:${color};color:${textColor}" title="${ev.summary || ''} · ${ev.start} → ${ev.end}">${adjWidth > 40 ? fname : ''}</div>`;
+      }
+    }
+
+const coDays2 = new Set(evs.filter(e => {
+      const d = new Date(e.end);
+      return d.getMonth() === viewMonth && d.getFullYear() === viewYear;
+    }).map(e => new Date(e.end).getDate()));
+    const ciDays2 = new Set(evs.filter(e => {
+      const d = new Date(e.start);
+      return d.getMonth() === viewMonth && d.getFullYear() === viewYear;
+    }).map(e => new Date(e.start).getDate()));
+    let sepsHtml = "";
+    coDays2.forEach(d => {
+      if (ciDays2.has(d)) {
+        // Trait diagonal même angle que les barres (14px décalage / 34px hauteur)
+        const x = (d - 1) * 38;
+        sepsHtml += `<svg style="position:absolute;top:5px;left:${x}px;width:38px;height:34px;z-index:10;overflow:visible" viewBox="0 0 38 34">
+          <line x1="26" y1="0" x2="12" y2="34" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>`;
+      }
+    });
+
+    rowsHtml += `
+      <div class="row">
+        <div class="row-name">
+          <div class="color-dot" style="background:${color}"></div>
+          <div class="row-name-text" title="${logement}">${shortName(logement)}</div>
+        </div>
+        <div class="row-cells" style="position:relative">
+          ${cellsHtml}
+          ${barsHtml}
+          ${sepsHtml}
+        </div>
+      </div>`;
+  }
+
+  return `
+    <div class="planning-outer">
+      <div class="planning-inner">
+        <div class="grid-header">
+          <div class="col-name">Logement</div>
+          <div class="day-headers">${dayHeadersHtml}</div>
+        </div>
+        ${rowsHtml}
+      </div>
+    </div>`;
+}
+
+// ============================================================
+//  VUE LISTE (prochains ménages = checkouts)
+// ============================================================
+function renderListe(logements) {
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const upcoming = allEvents
+    .filter(e => new Date(e.end) >= today)
+    .sort((a,b) => new Date(a.end) - new Date(b.end))
+    .slice(0, 20);
+
+  if (upcoming.length === 0) {
+    return `<div style="padding:40px 20px;text-align:center;color:var(--muted2)">Aucun ménage à venir.</div>`;
+  }
+
+  const cards = upcoming.map(ev => {
+    const c = colorMap[ev.logement];
+    const checkout = new Date(ev.end);
+    const checkin  = new Date(ev.start);
+    const diff = Math.round((checkout - today) / 86400000);
+    const badge = diff === 0 ? "Aujourd'hui" : diff === 1 ? "Demain" :
+      `Dans ${diff} j.`;
+    const badgeBg = diff === 0 ? c : diff === 1 ? c + '44' : 'var(--surface2)';
+    const badgeColor = diff <= 1 ? (diff===0 ? darkOrLight(c) : c) : 'var(--muted2)';
+
+    return `
+      <div class="next-card">
+        <div class="next-bar" style="background:${c}"></div>
+        <div class="next-info">
+          <div class="next-logement" style="color:${c}">${shortName(ev.logement)}</div>
+          <div class="next-date">
+            Arrivée ${checkin.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}
+            · Départ ${checkout.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}
+          </div>
+        </div>
+        <div class="next-badge" style="background:${badgeBg};color:${badgeColor}">🧹 ${badge}</div>
+      </div>`;
+  }).join('');
+
+  return `<div class="next-section"><div class="next-title">Prochains ménages</div>${cards}</div>`;
+}
+
+// ============================================================
+//  UTILITAIRES
+// ============================================================
+function shortName(n) {
+  return n.replace(/❤️|☀️|❤|☆|♡|⭐/g,'').trim();
+}
+
+function darkOrLight(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return (r*299 + g*587 + b*114) / 1000 > 128 ? '#000' : '#fff';
+}
+
+function prevMonth() {
+  viewMonth--;
+  if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+  document.getElementById('nav-label').textContent = MOIS_FR[viewMonth] + ' ' + viewYear;
+  document.getElementById('tab-content').innerHTML = renderPlanning([...new Set(allEvents.map(e => e.logement))]);
+}
+
+function nextMonth() {
+  viewMonth++;
+  if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+  document.getElementById('nav-label').textContent = MOIS_FR[viewMonth] + ' ' + viewYear;
+  document.getElementById('tab-content').innerHTML = renderPlanning([...new Set(allEvents.map(e => e.logement))]);
+}
+
+function setTab(tab) {
+  activeTab = tab;
+  renderApp();
+}
+
+function showError(msg) {
+  document.getElementById('app').innerHTML = `
+    <div style="padding:60px 20px;text-align:center">
+      <div style="font-size:28px;margin-bottom:12px">⚠️</div>
+      <div style="font-size:14px;color:#666;line-height:1.6">${msg}</div>
+    </div>`;
+}
+
+init();
+</script>
+</body>
+</html>
