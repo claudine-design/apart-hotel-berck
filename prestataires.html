@@ -511,13 +511,15 @@ function renderApp() {
 //  RECAP 5 JOURS
 // ============================================================
 function renderRecap5() {
-  const fmtD = d => d.toISOString().slice(0,10);
+  // Formatage en date locale (évite le bug UTC+2)
+  const fmtD = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const parseLocal = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
   const base = new Date(); base.setHours(0,0,0,0);
   const days = [0,1,2,3,4].map(i => { const d = new Date(base); d.setDate(d.getDate()+i); return d; });
 
   let html = `<div class="recap5">`;
   days.forEach((day, i) => {
-    const menages = allEvents.filter(e => fmtD(new Date(e.end)) === fmtD(day));
+    const menages = allEvents.filter(e => fmtD(parseLocal(e.end)) === fmtD(day));
     const cls = i === 0 ? 'r5-today' : i === 1 ? 'r5-tomorrow' : 'r5-other';
     const label = i === 0 ? "Aujourd'hui" : i === 1 ? 'Demain'
       : day.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
