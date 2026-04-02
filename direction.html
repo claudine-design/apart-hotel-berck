@@ -569,7 +569,7 @@ function menageCard(label, events, cls, date, overload) {
   const LINGE_APPARTS = ['Romantique chic patio', 'La Rotonde', 'Vue mer panoramique', 'Balneo 100m Plage Jardin'];
   const allEvts = [...(allData.christelle||[]), ...(allData.clara||[]), ...(allData.remi||[])];
   const lingeAlertes = allEvts.filter(e => {
-    const d = new Date(e.start); d.setDate(d.getDate()-1);
+    const [y2,m2,d2] = e.start.split('-').map(Number); const d = new Date(y2, m2-1, d2); d.setDate(d.getDate()-1);
     return fmt(d) === fmt(date) && LINGE_APPARTS.includes(e.logement) && e.numPeople > 2;
   });
   // Items calendrier annexe DRAP/CHECK IN-OUT pour ce jour
