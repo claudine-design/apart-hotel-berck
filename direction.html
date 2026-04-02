@@ -574,7 +574,8 @@ function menageCard(label, events, cls, date, overload) {
   });
   // Items calendrier annexe DRAP/CHECK IN-OUT pour ce jour
   const annexeItems = calAnnexe.filter(e => {
-    const dStart = new Date(e.start); dStart.setDate(dStart.getDate()-1);
+    const [y,m,d] = e.start.split('-').map(Number);
+    const dStart = new Date(y, m-1, d);
     return fmt(dStart) === fmt(date);
   });
   const lingeHtml = lingeAlertes.length > 0 ? `
@@ -589,7 +590,8 @@ function menageCard(label, events, cls, date, overload) {
       ${annexeItems.map(e => {
         const dStart = new Date(e.start);
         const label = (e.summary||'').replace(/✔️|⚠️|🕖|🕔|🕑|🕐|🕗|🕒|🕓|🕕/g,'').trim();
-        const dStartReal = new Date(e.start); dStartReal.setDate(dStartReal.getDate()-1);
+        const [yr,mo,dy] = e.start.split('-').map(Number);
+        const dStartReal = new Date(yr, mo-1, dy);
         const isCheckin = fmt(dStartReal) === fmt(date);
         const tag = isCheckin ? '↓' : '↑';
         return `<div style="font-size:11px;color:#C4B5FD">${tag} ${label}</div>`;
