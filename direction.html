@@ -353,7 +353,8 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztItAM6kCCLdR6
 const GROUPES = {
   christelle: { label: 'Christelle', color: '#4FC3F7' },
   clara:      { label: 'Clara',      color: '#FF6B35' },
-  remi:       { label: 'Rémi',       color: '#AAAAAA' }
+  remi:       { label: 'Rémi',       color: '#AAAAAA' },
+  compiegne:  { label: 'Compiègne',  color: '#A78BFA' }
 };
 
 // Couleurs par logement (10 couleurs par groupe)
@@ -380,7 +381,9 @@ const LOGEMENT_COLORS = {
   'Kitesurf':                  '#9E9E9E',
   'Paddle':                    '#EEEEEE',
   'Surf':                      '#757575',
-  '3 Chambres':                '#CACACA'
+  '3 Chambres':                '#CACACA',
+  // Compiègne (1) - violet
+  'Compiègne':                 '#A78BFA'
 };
 
 const MOIS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
@@ -411,20 +414,22 @@ async function init() {
 
   try {
     // Charge les 3 prestataires + calendrier annexe en parallèle
-    const [dataChristelle, dataClara, dataRemi] = await Promise.all([
+    const [dataChristelle, dataClara, dataRemi, dataCompiegne] = await Promise.all([
       fetchPresta('christelle'),
       fetchPresta('clara'),
-      fetchPresta('remi')
+      fetchPresta('remi'),
+      fetchCompiegne()
     ]);
 
     allData = {
       christelle: dataChristelle,
       clara: dataClara,
-      remi: dataRemi
+      remi: dataRemi,
+      compiegne: dataCompiegne
     };
 
     // Couleurs depuis dictionnaire
-    [...dataChristelle, ...dataClara, ...dataRemi].forEach(e => {
+    [...dataChristelle, ...dataClara, ...dataRemi, ...dataCompiegne].forEach(e => {
       if (!colorMap[e.logement]) colorMap[e.logement] = LOGEMENT_COLORS[e.logement] || '#888';
     });
 
@@ -451,8 +456,17 @@ async function fetchPresta(presta) {
   return data.events || [];
 }
 
+async function fetchCompiegne() {
+  try {
+    const url = APPS_SCRIPT_URL + '?action=ical&url=' + encodeURIComponent('https://api.beds24.com/ical/bookings.ics?roomid=533389');
+    const res = await fetch(url);
+    const data = await res.json();
+    return (data.events || []).map(e => ({ ...e, logement: 'Compiègne' }));
+  } catch(e) { return []; }
+}
+
 function renderApp() {
-  const allEvents = [...(allData.remi||[]), ...(allData.christelle||[]), ...(allData.clara||[])];
+  const allEvents = [...(allData.remi||[]), ...(allData.christelle||[]), ...(allData.clara||[]), ...(allData.compiegne||[])];
   const today = new Date(); today.setHours(0,0,0,0);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
   const after = new Date(today); after.setDate(today.getDate() + 2);
@@ -597,7 +611,7 @@ function menageCard(label, events, cls, date, overload) {
 function renderMenages(t, tom, af, today, tomorrow, after) {
   const now = new Date(); now.setHours(0,0,0,0);
   // Tous les checkouts à venir
-  const allEvents = [...(allData.remi||[]), ...(allData.christelle||[]), ...(allData.clara||[])];
+  const allEvents = [...(allData.remi||[]), ...(allData.christelle||[]), ...(allData.clara||[]), ...(allData.compiegne||[])];
   // Jour de ménage = end - 1 jour
   const upcoming = allEvents
     .filter(e => { const d = new Date(e.end); d.setDate(d.getDate()-1); return d >= now; })
