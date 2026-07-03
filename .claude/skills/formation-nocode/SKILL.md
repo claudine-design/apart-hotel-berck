@@ -1,65 +1,69 @@
 ---
 name: formation-nocode
 description: >
-  Connaissances de la formation no-code de Claudine (NOCODE FORMULA / Airbnb
-  Business Academy, par Sébastien du Sous Loueur) appliquées à son business de
-  location d'appartements (Apart Hotel Berck). Utiliser ce skill dès que
-  Claudine parle de no-code, d'automatisation de sa conciergerie / location
-  courte durée, des outils vus dans la formation, ou demande d'appliquer un
-  module de la formation à son activité.
+  Connaissances no-code issues de la formation NOCODE FORMULA + FACTURATION
+  FORMULA (Le Sous Loueur / Sébastien More, communauté Skool « Airbnb Business
+  Academy »), appliquées au business de Claudine : Apart Hotel Berck, location
+  courte durée de 3 appartements à Berck-sur-Mer. Utiliser ce skill dès que
+  Claudine parle de no-code, d'automatiser sa gestion (réservations, ménage,
+  prestataires, facturation), des outils Airtable / Make / Beds24 / Zoho /
+  Pennylane / Qonto, ou demande d'appliquer la formation à son activité.
 ---
 
-# Formation no-code — Airbnb Business Academy (NOCODE FORMULA)
+# Formation no-code — NOCODE FORMULA (Le Sous Loueur)
 
 ## Contexte
 
-Claudine gère **Apart Hotel Berck**, une activité de location d'appartements
-en courte durée à Berck-sur-Mer (3 appartements gérés, tableau de bord maison
-dans ce dépôt : `direction.html` et `prestataires.html`, connectés à Google
-Apps Script). Elle a acheté la formation **NOCODE FORMULA** (Le Sous Loueur,
-hébergée sur Skool : « Airbnb Business Academy ») pour apprendre à utiliser
-des outils no-code dans son business.
+Claudine gère **Apart Hotel Berck** : 3 appartements en location courte durée
+à Berck-sur-Mer, réservations via Airbnb/Booking, un tableau de bord maison
+dans ce dépôt (`direction.html`, `prestataires.html`) branché sur Google
+Apps Script / Google Sheets, et des prestataires (ménage, linge) à
+coordonner. Elle a acheté **NOCODE FORMULA + FACTURATION FORMULA**
+(Le Sous Loueur, Sébastien More) pour utiliser le no-code dans ce business.
 
-Objectif du skill : quand Claudine pose une question ou demande une
-réalisation, répondre **avec la méthode et les outils enseignés dans la
-formation**, adaptés à son cas concret (ses appartements, ses prestataires,
-ses outils existants).
+**Philosophie de la formation** : une conciergerie / activité de location
+courte durée n'a pas besoin de développeur. Avec des outils no-code, on
+construit soi-même, pas à pas, **son propre outil de gestion sur mesure** —
+base de données, automatisations, interfaces simples pour soi et ses
+équipes — en partant de templates éprouvés, puis on **automatise la
+facturation** de bout en bout.
+
+## Modules (dans `references/`)
+
+| # | Fichier | Sujet |
+|---|---------|-------|
+| 1 | `module-01-comprendre-le-no-code.md` | Bases et vocabulaire du no-code, panorama des outils |
+| 2 | `module-02-base-de-donnees-airtable.md` | Structurer les données de son activité (Airtable) |
+| 3 | `module-03-automatisations-make.md` | Automatiser avec Make/Zapier : scénarios, webhooks |
+| 4 | `module-04-interfaces.md` | Interfaces simples pour soi et ses équipes |
+| 5 | `module-05-channel-manager-beds24.md` | Beds24, le hub des réservations (Airbnb, Booking) |
+| 6 | `module-06-facturation-formula.md` | Facturation automatique : Zoho Invoice, Pennylane, Qonto |
+| 7 | `module-07-application-apart-hotel-berck.md` | Plan d'application concret au business de Claudine |
 
 ## Comment utiliser ce skill
 
-1. Identifier le module de la formation concerné par la demande (voir la
-   liste dans `references/`).
-2. Lire le fichier du module correspondant dans `references/` avant de
-   répondre.
-3. Appliquer la méthode du module au contexte réel de Claudine (ses
-   appartements à Berck, son tableau de bord existant, ses prestataires),
-   pas de manière générique.
-4. Claudine n'est pas technicienne : expliquer pas à pas, en français simple,
-   sans jargon, avec des étapes cliquables (« ouvre X, clique sur Y »).
+1. Identifier le module concerné par la demande et **lire son fichier**
+   avant de répondre.
+2. Répondre avec la logique de la formation : partir du besoin métier
+   (location courte durée), choisir l'outil no-code adapté, construire pas
+   à pas, tester, puis automatiser.
+3. Adapter systématiquement au cas réel de Claudine (module 7) : ses
+   3 appartements, son tableau de bord existant, ses prestataires. Ne pas
+   proposer de refaire ce qui fonctionne déjà chez elle sans raison.
+4. Claudine n'est pas technicienne : français simple, pas de jargon sans
+   explication, étapes cliquables (« ouvre X, clique sur Y »), une chose à
+   la fois.
+5. Privilégier la solution la plus simple qui marche ; les outils déjà en
+   place (Google Sheets, Apps Script, Gmail, Drive) restent valables quand
+   ils suffisent.
 
-## Contenu de la formation
+## Provenance du contenu
 
-⚠️ **CONTENU À COMPLÉTER** — la plateforme Skool nécessite le compte de
-Claudine et n'est pas accessible depuis cet environnement. Les modules
-ci-dessous doivent être remplis à partir du contenu qu'elle fournit
-(copier-coller des leçons, PDF, ou notes). Voir
-`references/comment-ajouter-le-contenu.md`.
-
-Structure attendue : un fichier par module dans `references/`, nommé
-`module-XX-titre.md`, contenant pour chaque leçon :
-
-- Titre de la leçon
-- Idées clés / méthode enseignée
-- Outils no-code utilisés (et liens)
-- Étapes pratiques
-- Application possible au business de Claudine
-
-## Règles de réponse
-
-- Toujours relier la réponse au contenu réel de la formation quand il est
-  disponible ; si le module concerné n'est pas encore dans `references/`,
-  le dire clairement et demander à Claudine de fournir cette partie du cours.
-- Ne pas inventer le contenu de la formation : ce qui n'est pas dans
-  `references/` n'en fait pas partie.
-- Privilégier les outils déjà en place chez Claudine (Google Sheets, Google
-  Apps Script, Gmail, Google Drive) quand la formation laisse le choix.
+Les vidéos de la formation sont sur Skool (accès membre uniquement, non
+lisible par Claude). Ce skill est construit à partir : (1) du programme et
+descriptif publics de la formation sur lesousloueur.fr, (2) des outils
+qu'elle enseigne officiellement (no-code appliqué à la conciergerie ;
+facturation via Pennylane / Qonto / Zoho Invoice connectés à Beds24, Airbnb,
+Booking), et (3) des bonnes pratiques standard de ces outils. Si Claudine
+colle le contenu exact d'une leçon, l'intégrer au module correspondant en
+remplaçant le contenu générique.
