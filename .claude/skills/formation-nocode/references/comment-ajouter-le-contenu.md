@@ -1,5 +1,13 @@
 # Comment ajouter le contenu exact des vidéos de la formation
 
+> **État au 4 juillet 2026** : Cowork a exporté le **module 0 (fil rouge)**
+> dans le dossier Drive « Formation NOCODE », puis semble s'être arrêté (aucun
+> autre module après ~1 h). Pour récupérer la suite (Airtable, Make, Softr,
+> Facturation Formula), **relancer Cowork** avec le prompt ci-dessous en lui
+> précisant de reprendre à partir du module suivant et de ne pas s'arrêter au
+> premier. Chaque nouveau `module-XX-*.md` déposé sera intégré ici.
+
+
 La formation est sur Skool (accès membre uniquement). Depuis une session
 Claude Code web, Skool est inaccessible (réseau bloqué + connexion au compte
 de Claudine requise). Le contenu exact des leçons doit donc être extrait
