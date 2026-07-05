@@ -40,7 +40,8 @@ Toute demande « je voudrais que X se fasse tout seul » se traduit dans ces
   « il s'est passé quelque chose, réagis ».
 - **Channel manager** : le chef d'orchestre des réservations, qui
   synchronise Airbnb, Booking et le site en direct (calendriers, prix) pour
-  éviter les doubles réservations. Voir module 5.
+  éviter les doubles réservations. Voir modules 5 (Zapier, sans channel
+  manager) et 6 (Beds24, avec channel manager).
 
 ## Panorama des outils (famille par famille)
 
@@ -49,8 +50,8 @@ Toute demande « je voudrais que X se fasse tout seul » se traduit dans ces
 | Base de données | **Airtable**, Google Sheets, Notion | Airtable = tableur + vraie base de données ; le standard de la formation |
 | Automatisation | **Make** (ex-Integromat), Zapier, n8n | Make = le plus puissant et économique pour des scénarios riches |
 | Interface | Airtable Interfaces, **Softr**, Glide | Transformer sa base en petite application pour l'équipe |
-| Réservations | **Beds24** | Channel manager central du système (module 5) |
-| Facturation | **Zoho Invoice**, **Pennylane**, **Qonto** | Facturation et compta automatisées (module 6) |
+| Réservations | **Beds24** | Channel manager central du système (module 6) |
+| Facturation | **Zoho Invoice**, **Pennylane**, **Qonto** | Facturation et compta automatisées (module 11) |
 
 ## Règles de bon sens enseignées
 

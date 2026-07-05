@@ -32,19 +32,41 @@ dédié (https://discord.gg/fV3FdE5zTh).
 ## Structure de la formation
 
 L'ordre d'apprentissage révélé par le module fil rouge est :
-**écosystème → Airtable → Make → Softr → (facturation)**.
+**écosystème → Airtable → Zapier/Beds24/Make → Softr → Slack → Zoho →
+Documint → Maintenance → IA/Chatbot → Extra**.
 
-| # | Fichier | Sujet | État du contenu |
-|---|---------|-------|-----------------|
-| 0 | `module-00-fil-rouge-ecosysteme.md` | Fil rouge : écosystème + initiation Airtable/Make/Softr (12 leçons, liens Vimeo) | ✅ **Réel** (extrait Skool) |
-| — | `module-01-comprendre-le-no-code.md` | Fond de carte : concepts et vocabulaire no-code (support de compréhension) | ⚙️ Générique (repères, pas le verbatim du cours) |
-| … | *(modules pratiques : Airtable, Make, Softr, Facturation Formula)* | *à extraire* | ⏳ **En attente** d'export Cowork |
+L'extraction complète (16 modules / 113 leçons) a été faite le 2026-07-05
+depuis la classroom Skool `0c41df47` (« FORMATION NOCODE (15H) »). Chaque
+module liste les leçons avec leur titre exact et leur lien Vimeo — le détail
+complet est dans `references/extraction-recap.md`.
 
-⚠️ **Import en cours.** Seul le module 0 (fil rouge) a été extrait des vidéos
-Skool à ce jour. Les modules pratiques suivants doivent encore être exportés
-via Cowork (voir `references/comment-ajouter-le-contenu.md`). Tant qu'un
-module n'a pas son fichier `module-XX-*.md` marqué « Réel », son contenu
-détaillé n'est pas connu : le dire à Claudine plutôt que d'inventer.
+| # | Fichier | Sujet | Leçons | État |
+|---|---------|-------|--------|------|
+| 0 | `module-00-fil-rouge-ecosysteme.md` | Fil rouge : écosystème + initiation Airtable/Make/Softr | 12 | ✅ **Réel** |
+| — | `module-01-comprendre-le-no-code.md` | Fond de carte : concepts et vocabulaire no-code (support de compréhension) | — | ⚙️ Générique |
+| 1 | `module-01-airtable-configuration.md` | Airtable — Configuration (compte, template, tables Réservation/Ménage/Agent/Propriétaire/Logement) | 7 | ✅ **Réel** |
+| 2 | `module-02-airtable-champs-formules.md` | Airtable — Champs spécifiques et formules (liens, lookups, formules) | 6 | ✅ **Réel** |
+| 3 | `module-03-airtable-formulaires-boutons.md` | Airtable — Formulaires et boutons (candidatures, rapports de ménage) | 8 | ✅ **Réel** |
+| 4 | `module-04-airtable-vues-filtrees.md` | Airtable — Vues filtrées (Kanban, Galerie, Calendrier, export) | 8 | ✅ **Réel** |
+| 5 | `module-05-zapier-liaison-airbnb-airtable.md` | Zapier — liaison directe Airbnb → Airtable sans channel manager | 4 | ✅ **Réel** |
+| 6 | `module-06-beds24-et-make.md` | Beds24 et Make (channel manager, scénarios réservation) | 9 | ✅ **Réel** (1 leçon vide) |
+| 7 | `module-07-softr-application-agent.md` | Softr — Application Agent (missions, ménage, calendrier) | 13 | ✅ **Réel** |
+| 8 | `module-08-softr-livret-accueil-voyageurs.md` | Softr — Livret d'accueil voyageurs | 5 | ✅ **Réel** |
+| 9 | `module-09-softr-application-administrateur.md` | Softr — Application Administrateur (City Manager) | 3 | ✅ **Réel** |
+| 10 | `module-10-slack.md` | Slack — notifications missions/ménage | 5 | ✅ **Réel** |
+| 11 | `module-11-zoho-factures-agents.md` | Zoho — Factures Agents (facturation propriétaires/agents) | 7 | ✅ **Réel** (1 leçon = placeholder) |
+| 12 | `module-12-documint-contrats-automatises.md` | Documint — Contrats automatisés (bail/concierge) | 3 | ✅ **Réel** |
+| 13 | `module-13-gestion-maintenance-taches.md` | Gestion de la maintenance — tâches supplémentaires | 10 | ✅ **Réel** |
+| 14 | `module-14-ia-creation-chatbot.md` | IA — Création du chatbot (réponses automatiques voyageurs) | 6 | ✅ **Réel** |
+| 15 | `module-15-extra.md` | Extra (SMS, contacts Google, relances logement) | 7 | ✅ **Réel** |
+
+⚠️ **Limites connues** (détail dans `extraction-recap.md`) : Skool n'expose
+pas les transcriptions des vidéos Vimeo, seul le texte écrit de chaque page
+a pu être extrait (titre, notes, liens) — le contenu pédagogique détaillé
+reste dans la vidéo elle-même. La leçon 9 du module 6 et une partie du
+module 11 (leçon 1) sont vides ou placeholder côté texte. La documentation
+et les templates restent sur le Discord privé de la formation
+(non téléchargeables depuis cet environnement).
 
 ## Comment utiliser ce skill
 
