@@ -9,7 +9,7 @@ référence pour sa configuration.
 
 ### Airbnb
 
-- **Relance automatique 10 jours après** la réponse à l'avis positif.
+- **Relance automatique 10 jours après réception de l'avis positif** du voyageur.
 - Le message de relance **doit contenir** la phrase :
 
   > Nous vous avons laissé un avis 5 étoiles sur Airbnb.
