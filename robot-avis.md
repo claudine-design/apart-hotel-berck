@@ -23,12 +23,29 @@ de réciprocité** (le voyageur se sent incité à noter à son tour). La phrase
 Objectif : inciter le voyageur à laisser une note **s'il ne l'a pas encore
 fait**. Inutile (et à éviter) de relancer quelqu'un qui a déjà noté.
 
-- **Vérifier d'abord que le voyageur n'a pas déjà laissé sa note.**
-  - S'il **a déjà noté** → ne rien envoyer (la relance ne sert à rien).
-  - S'il **n'a pas noté** → envoyer la relance.
+### Comment savoir si le voyageur a noté (détection)
+
+- **Recouper toutes les notes reçues** sur la plateforme et **rattacher chaque
+  note à son voyageur** (par réservation : nom du voyageur + dates de séjour).
+  Cela vaut pour Airbnb **et** pour Booking.
+- **Règle : si, 10 jours après le départ, aucune note de ce voyageur n'est
+  visible → il n'a pas noté.** (Pareil sur Airbnb et sur Booking.)
+- Ceux dont une note est déjà rattachée → **ne rien envoyer**.
+
+### Qui relancer
+
+- Le voyageur qui **n'a pas mis de note** à J+10 **et** dont le séjour s'est
+  bien passé (voyageur enchanté : échanges positifs, aucun incident ni
+  réclamation pendant le séjour).
+- Un voyageur mécontent ou dont le séjour a posé problème → **ne pas relancer**.
+
+### Quand et comment relancer
+
 - **Timing : 2 jours avant la fin de la période d'avis** de la plateforme.
-  - Sur Airbnb, la fenêtre est de 14 jours après le départ → relance à **J+12**
-    après le check-out (soit 2 jours avant la clôture).
+  - Sur Airbnb, la fenêtre est de 14 jours après le départ → détection à
+    **J+10**, relance à **J+12** après le check-out (2 jours avant la clôture).
+  - Sur Booking : même principe — détection à J+10, relance 2 jours avant la
+    clôture de la fenêtre d'avis.
 - Le message **inclut la phrase de réciprocité** de la plateforme (voir
   ci-dessus) : la formule Airbnb pour un séjour Airbnb, la formule Booking
   pour un séjour Booking.
@@ -45,6 +62,7 @@ fait**. Inutile (et à éviter) de relancer quelqu'un qui a déjà noté.
 
 | Flux | Airbnb | Booking |
 |------|--------|---------|
-| Relance avant clôture (si le voyageur n'a pas encore noté, 2 j avant la fin) | Oui | Oui |
+| Détection « a noté / n'a pas noté » (recouper les notes reçues par voyageur ; pas de note visible à J+10 → n'a pas noté) | Oui | Oui |
+| Relance avant clôture (si pas de note à J+10 **et** séjour enchanté, 2 j avant la fin) | Oui | Oui |
 | Relance après un avis positif (J+10) | Oui | Non |
 | Phrase de réciprocité dans le message | « Nous vous avons laissé un avis 5 étoiles sur Airbnb » | « Je ne peux pas vous noter, mais si j'avais à vous noter, je vous mettrais 10 sur 10 » |
