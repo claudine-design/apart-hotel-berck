@@ -37,7 +37,20 @@ fait**. Inutile (et à éviter) de relancer quelqu'un qui a déjà noté.
 - Le voyageur qui **n'a pas mis de note** à J+10 **et** dont le séjour s'est
   bien passé (voyageur enchanté : échanges positifs, aucun incident ni
   réclamation pendant le séjour).
+- **Vérification obligatoire avant chaque relance : relire TOUTE la
+  messagerie du voyageur** (fil Airbnb/Booking complet, du premier au dernier
+  message) pour s'assurer qu'on relance quelqu'un qui mettra une **bonne
+  note**. Au moindre signal négatif — plainte, problème signalé (propreté,
+  bruit, panne, litige…), ton sec ou déçu, demande de geste commercial —
+  → **ne pas relancer**. On ne relance que si l'ensemble du fil est
+  clairement positif ; dans le doute, on s'abstient.
 - Un voyageur mécontent ou dont le séjour a posé problème → **ne pas relancer**.
+
+### Signature des messages
+
+- Les messages aux voyageurs sont **signés « Claudine »**.
+- **Ne jamais mentionner « princesse d'Opale »** (ni l'adresse
+  princessedopale@…) dans les messages aux voyageurs.
 
 ### Quand et comment relancer
 
@@ -66,3 +79,5 @@ fait**. Inutile (et à éviter) de relancer quelqu'un qui a déjà noté.
 | Relance avant clôture (si pas de note à J+10 **et** séjour enchanté, 2 j avant la fin) | Oui | Oui |
 | Relance après un avis positif (J+10) | Oui | Non |
 | Phrase de réciprocité dans le message | « Nous vous avons laissé un avis 5 étoiles sur Airbnb » | « Je ne peux pas vous noter, mais si j'avais à vous noter, je vous mettrais 10 sur 10 » |
+| Relire toute la messagerie avant relance (au moindre signal négatif → pas de relance) | Oui | Oui |
+| Signature | « Claudine » — jamais « princesse d'Opale » | « Claudine » — jamais « princesse d'Opale » |
