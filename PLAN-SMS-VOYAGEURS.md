@@ -106,10 +106,13 @@ Pourquoi :
 
 Le numéro cloud (Twilio) est écarté car il ne voit pas les SMS adressés au numéro personnel. Tasker est écarté car plus complexe pour un gain nul ici. L'appli sur mesure est écartée (maintenance disproportionnée). Une appli gateway open source reste le **plan B** si MacroDroid décevait.
 
-### Accès aux contacts : deux niveaux complémentaires
+### Accès aux contacts et confidentialité : filtrage local d'abord (correction validée le 23/07)
 
-1. **Sur le téléphone (MacroDroid)** : au moment de la réception, MacroDroid ajoute le **nom du contact** (ou « inconnu ») dans les données envoyées. Les contacts ne quittent jamais le téléphone en masse — seule l'info du SMS concerné est transmise. ✅ Confidentialité maximale.
-2. **Dans Google Contacts (côté Apps Script)** : les contacts Android de Claudine sont déjà synchronisés avec son compte Google. Apps Script peut interroger Google Contacts (API People) pour retrouver les **libellés** (« Famille », « Prestataires », « Artisans », « Pro »…). Il suffira que Claudine range progressivement ses contacts dans ces libellés — le système s'améliorera tout seul.
+**Principe retenu à la demande de Claudine : le téléphone est personnel — le premier tri se fait SUR le téléphone.** Les SMS de la famille, des amis, du banquier, du comptable, les codes de connexion et les messages bancaires **ne sont jamais transmis** à Apps Script ni à une IA : ils sont écartés localement par MacroDroid (listes locales `EXCLUS` / `PRO_AUTORISES`, filtres numéros courts et contenus sensibles). Seuls partent : les contacts professionnels autorisés (avec leur catégorie locale) et les numéros inconnus ayant passé les filtres. Chaque transmission contient le strict minimum (numéro, texte, horodatage, statut contact, signature).
+
+⚠️ Vérification faite : MacroDroid ne lit **pas** les libellés Google Contacts pour filtrer les SMS → remplacés par des listes locales sur le téléphone, plus fiables et plus confidentielles.
+
+Détail complet (ordre des règles, données transmises, garde-fous, sources) : voir [`ETAPE0-MACRODROID-ET-FILTRAGE-LOCAL.md`](ETAPE0-MACRODROID-ET-FILTRAGE-LOCAL.md).
 
 ---
 
@@ -170,7 +173,9 @@ Le numéro cloud (Twilio) est écarté car il ne voit pas les SMS adressés au n
 
 | Clé | Valeur |
 |---|---|
-| REPONSES_AUTO_ACTIVEES | **NON** (kill-switch général — c'est le « bouton d'arrêt » demandé) |
+| MODE | **OBSERVATION** (classement + propositions, zéro envoi) / TEST (réponses simulées, journalisées mais jamais envoyées) / PRODUCTION |
+| REPONSES_AUTO_ACTIVEES | **NON** (kill-switch général — c'est le « bouton d'arrêt » demandé ; second interrupteur indépendant sur le téléphone : `TRANSMISSION_ACTIVE`) |
+| ALERTE_SILENCE_TELEPHONE_H | 3 (e-mail d'alerte si le téléphone n'a rien transmis — même pas son signal de vie — depuis 3 h entre 8 h et 22 h) |
 | SEUIL_CONFIANCE_ENVOI | 85 |
 | SEUIL_CONFIANCE_PROPOSITION | 60 |
 | HEURE_RESUME_QUOTIDIEN | 20:30 |
