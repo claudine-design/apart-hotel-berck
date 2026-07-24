@@ -27,10 +27,12 @@
 | `DIGEST_EMAILS` | `claudine.podvin@gmail.com,princessedopale@gmail.com` |
 | `CALLMEBOT_PHONE` / `CALLMEBOT_APIKEY` | (facultatif) mêmes valeurs que le robot Booking pour l'alerte WhatsApp |
 
-> **Token Beds24 lecture seule** : dans Beds24 → Settings → Apps & Integrations → API →
-> « Setup » : générer une *invite code* avec **droits de lecture uniquement** (bookings : read),
-> puis l'échanger contre un refresh token. Je te guiderai en direct à ce moment-là —
-> c'est l'étape la plus technique, 5 minutes à deux.
+> **Token Beds24 lecture seule** (méthode validée à l'installation du 24/07/2026) :
+> dans Beds24 → Marketplace → API, le bouton « Generate long life token » **ne convient PAS**
+> (ce n'est pas un refresh token → HTTP 401). Il faut **« Generate invite code »** avec
+> droits **READ uniquement** (aucun write/delete), puis échanger ce code via
+> `GET /v2/authentication/setup` (en-tête `code`) pour obtenir le `refreshToken`,
+> à stocker dans la propriété `BEDS24_READ_REFRESH_TOKEN`.
 
 5. Dans la barre d'outils, choisir la fonction **`setup`** puis ▶ **Exécuter**. Autoriser les accès demandés (Sheets, Gmail, contacts extérieurs). Ouvrir « Journal d'exécution » : noter la ligne **`SECRET_SMS`** affichée (on en aura besoin pour MacroDroid).
 6. Choisir la fonction **`installerTriggers`** puis ▶ **Exécuter** (met en place le résumé de 20h30 et la veille du téléphone).
