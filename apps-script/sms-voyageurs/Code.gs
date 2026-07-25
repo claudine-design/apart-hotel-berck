@@ -36,7 +36,7 @@ function ss_() { return SpreadsheetApp.openById(SHEET_ID); }
 var COLS_JOURNAL = ['id', 'date_heure', 'numero', 'contact_connu', 'categorie_locale',
   'message', 'resa_id', 'resa_appart', 'resa_arrivee', 'resa_depart', 'resa_statut',
   'categorie', 'intention', 'confiance', 'action', 'regle', 'proposition',
-  'statut', 'erreur', 'intervention_manuelle'];
+  'statut', 'erreur', 'intervention_manuelle', 'explication'];
 
 var CONFIG_DEFAUT = [
   ['MODE', 'OBSERVATION', 'OBSERVATION = classe + propose, aucun envoi | TEST = simule les envois | PRODUCTION (phase 2)'],
@@ -313,13 +313,20 @@ function chercherReservationBeds24_(numE164) {
     if (b.arrival >= aujourdhui) return 2;                              // à venir
     return 1;                                                           // passée récente
   }
+  var actifs = candidats.filter(function (b) { return score_(b) > 0; });
   var b = candidats[0];
   return {
     id: b.id, propId: b.propertyId, appart: nomAppart_(b.propertyId),
     prenom: b.firstName || '', nom: b.lastName || '',
     arrivee: b.arrival, depart: b.departure, statut: b.status,
     arrive_aujourdhui: b.arrival === aujourdhui,
-    en_cours: (b.arrival <= aujourdhui && b.departure >= aujourdhui)
+    en_cours: (b.arrival <= aujourdhui && b.departure >= aujourdhui),
+    // Ambiguïté : plusieurs réservations non annulées partagent ce numéro
+    ambigu: actifs.length > 1,
+    nb_resas: actifs.length,
+    autres: actifs.slice(1, 4).map(function (x) {
+      return nomAppart_(x.propertyId) + ' (' + x.arrival + '→' + x.departure + ')';
+    }).join(', ')
   };
 }
 
@@ -330,7 +337,9 @@ function dateStr_(decalageJours) {
 
 /* ================= KB du robot Booking (LECTURE SEULE) ================= */
 
+var KB_CACHE_ = null;
 function chargerKB_() {
+  if (KB_CACHE_) return KB_CACHE_;
   var kb = { style: '', commun: '', propmap: {} };
   var id = PropertiesService.getScriptProperties().getProperty('KB_SHEET_ID');
   if (!id) return kb;
@@ -345,6 +354,7 @@ function chargerKB_() {
       else if (slug === '_propmap') { try { kb.propmap = JSON.parse(row[1]); } catch (e) {} }
     });
   } catch (e) { log_('kb', 'lecture KB impossible: ' + e.message); }
+  KB_CACHE_ = kb;
   return kb;
 }
 
@@ -365,10 +375,11 @@ var SYS_SMS = 'Tu es l\'assistant SMS de Claudine Podvin, hôte d\'appartements 
   '4. Jamais de promesse de remboursement, geste commercial ou annulation.\n' +
   '5. Demande de code/accès : la réponse ne contient JAMAIS le code (phase observation). Poser les questions de vérification (avez-vous retrouvé le message d\'arrivée ? où êtes-vous exactement ? quelle information manque ?).\n\n' +
   'Style des réponses : chaleureux, professionnel, vouvoiement, clair, signé « Claudine ». Jamais robotique, jamais « il est possible que je fasse des erreurs ».\n\n' +
-  'CONFIANCE (0-100) : élevée seulement si numéro trouvé dans Beds24 + dates cohérentes + intention claire + aucune demande sensible + aucune contradiction. Toute demande sensible (codes, accès, adresse) ou incohérence plafonne la confiance à 40.\n\n' +
+  'CONFIANCE (0-100) : élevée seulement si numéro trouvé dans Beds24 + dates cohérentes + intention claire + aucune demande sensible + aucune contradiction. Toute demande sensible (codes, accès, adresse) ou incohérence plafonne la confiance à 40. Si PLUSIEURS réservations partagent le numéro : confiance maximum 60 et la réponse demande poliment de préciser le logement.\n\n' +
+  'EXPLICATION : fournis toujours "explication_confiance" = 1 phrase très courte listant les éléments qui fondent le score (ex. « numéro reconnu, arrivée aujourd\'hui, demande type connue ») et "elements_manquants" = ce qui manque ou reste ambigu (ou null).\n\n' +
   'URGENCE uniquement si le message ne peut pas attendre 1 h : voyageur bloqué le jour d\'arrivée, panne majeure, fuite, danger, menace, conflit grave, demande de remboursement agressive.\n\n' +
   'Réponds UNIQUEMENT en JSON valide :\n' +
-  '{"categorie":"...","intention":"annonce_heure_arrivee"|"question_acces"|"question_logement"|"probleme"|"demande_identification"|"conversation_privee"|"publicite"|"autre","heure_arrivee":"17h ou null","confiance":0-100,"reponse":"proposition EN FRANÇAIS ou null","urgence":null|{"motif":"très court"},"note_interne":"1 phrase ou null"}';
+  '{"categorie":"...","intention":"annonce_heure_arrivee"|"question_acces"|"question_logement"|"probleme"|"demande_identification"|"conversation_privee"|"publicite"|"autre","heure_arrivee":"17h ou null","confiance":0-100,"explication_confiance":"phrase très courte","elements_manquants":"court ou null","reponse":"proposition EN FRANÇAIS ou null","urgence":null|{"motif":"très court"},"note_interne":"1 phrase ou null"}';
 
 function analyserSms_(numero, texte, body, resa) {
   var kb = chargerKB_();
@@ -377,7 +388,9 @@ function analyserSms_(numero, texte, body, resa) {
     'Contact dans le téléphone : ' + (body.contact_connu === 'oui' ? 'OUI' + (body.categorie_locale ? ' — catégorie locale : ' + body.categorie_locale : '') : 'NON (numéro inconnu)') + '\n' +
     'Réservation Beds24 correspondant au numéro : ' + (resa
       ? 'OUI — ' + resa.appart + ', ' + resa.prenom + ' ' + resa.nom + ', séjour ' + resa.arrivee + ' → ' + resa.depart +
-        ' (statut ' + resa.statut + (resa.arrive_aujourdhui ? ', ARRIVE AUJOURD\'HUI' : '') + (resa.en_cours ? ', séjour EN COURS' : '') + ')'
+        ' (statut ' + resa.statut + (resa.arrive_aujourdhui ? ', ARRIVE AUJOURD\'HUI' : '') + (resa.en_cours ? ', séjour EN COURS' : '') + ')' +
+        (resa.ambigu ? '\n⚠️ AMBIGUÏTÉ : ' + resa.nb_resas + ' réservations actives partagent ce numéro. Autres : ' + resa.autres +
+          ' — plafonner la confiance à 60 et demander le logement dans la réponse.' : '')
       : 'AUCUNE — numéro non vérifié, appliquer strictement la règle 1') + '\n\n' +
     'STYLE DE CLAUDINE :\n' + (kb.style || '(non chargé)') + '\n\n' +
     'SMS :\n« ' + texte + ' »';
@@ -456,7 +469,10 @@ function journal_(id, numero, body, resa, analyse, action, regle, erreur) {
     resa ? resa.id : '', resa ? resa.appart : '', resa ? resa.arrivee : '', resa ? resa.depart : '', resa ? resa.statut : '',
     analyse.categorie || '', analyse.intention || '', analyse.confiance || '',
     action, regle, String(analyse.proposition_finale || analyse.reponse || '').slice(0, 2000),
-    'journalise', erreur || '', '']);
+    'journalise', erreur || '', '',
+    String(analyse.explication_confiance || '') +
+      (analyse.elements_manquants ? ' | manque : ' + analyse.elements_manquants : '') +
+      (resa && resa.ambigu ? ' | ambiguïté : ' + resa.nb_resas + ' résas (' + resa.autres + ')' : '')]);
 }
 
 function majConversation_(numero, analyse) {
@@ -488,9 +504,17 @@ function digestProposition_(id, numero, texte, resa, analyse) {
     MailApp.sendEmail({
       to: to.join(','), subject: '📱 SMS : 1 proposition à valider (' + (resa ? resa.appart : 'non identifié') + ')',
       htmlBody: '<h2>📱 Proposition de réponse SMS <span style="color:#888">(mode ' + config_('MODE', 'OBSERVATION') + ' — rien n\'est envoyé)</span></h2>' +
-        '<p><b>' + (resa ? resa.appart + ' — ' + resa.prenom + ' ' + resa.nom + ' (' + resa.arrivee + ' → ' + resa.depart + ')'
-                        : 'Numéro non identifié ' + masquer(numero)) + '</b>' +
-        ' · catégorie <b>' + analyse.categorie + '</b> · confiance <b>' + analyse.confiance + '</b></p>' +
+        '<div style="background:#f7f7f7;border-radius:6px;padding:8px 10px;margin:8px 0">' +
+        (resa
+          ? '📋 <b>Réservation reconnue</b> : ' + resa.prenom + ' ' + resa.nom + ' — ' + resa.appart +
+            ' — arrivée <b>' + resa.arrivee + '</b>, départ <b>' + resa.depart + '</b>' +
+            (resa.arrive_aujourdhui ? ' — <b>ARRIVE AUJOURD\'HUI</b>' : resa.en_cours ? ' — séjour en cours' : '') +
+            (resa.ambigu ? '<br>⚠️ <b>Ambiguïté</b> : ' + resa.nb_resas + ' réservations pour ce numéro (autres : ' + resa.autres + ')' : '')
+          : '❓ <b>Numéro non reconnu dans Beds24</b> : ' + masquer(numero)) +
+        '</div>' +
+        '<p>Catégorie <b>' + analyse.categorie + '</b> · <b>Confiance ' + analyse.confiance + '</b>' +
+        (analyse.explication_confiance ? ' : ' + analyse.explication_confiance : '') +
+        (analyse.elements_manquants ? '<br><span style="color:#b26a00">Manque / ambigu : ' + analyse.elements_manquants + '</span>' : '') + '</p>' +
         (analyse.note_interne ? '<p style="color:#c0392b">⚠️ ' + analyse.note_interne + '</p>' : '') +
         '<p>💬 « ' + texte + ' »</p>' +
         '<div style="background:#f5f7ff;border-left:3px solid #3b5bdb;padding:8px;white-space:pre-wrap">' +
@@ -563,7 +587,7 @@ function resumeQuotidien() {
       iResa = COLS_JOURNAL.indexOf('resa_id'), iNum = COLS_JOURNAL.indexOf('numero'),
       iMsg = COLS_JOURNAL.indexOf('message'), iApp = COLS_JOURNAL.indexOf('resa_appart'),
       iConf = COLS_JOURNAL.indexOf('confiance'), iReg = COLS_JOURNAL.indexOf('regle'),
-      iProp = COLS_JOURNAL.indexOf('proposition');
+      iProp = COLS_JOURNAL.indexOf('proposition'), iExp = COLS_JOURNAL.indexOf('explication');
   var lignes = [];
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][iDate]).indexOf(jour) === 0) lignes.push(data[i]);
@@ -578,7 +602,9 @@ function resumeQuotidien() {
     if (String(l[iCat]) === 'voyageur_non_reconnu' || String(l[iCat]) === 'inconnu') stats.nonIdentifies++;
     if (l[iErr]) stats.erreurs++;
     detail.push('<tr><td>' + String(l[iDate]).slice(11, 16) + '</td><td>' + masquer(l[iNum]) + '</td><td>' +
-      l[iCat] + '</td><td>' + (l[iApp] || '—') + '</td><td>' + l[iConf] + '</td><td>' + l[iAct] + '</td><td>' + l[iReg] +
+      l[iCat] + '</td><td>' + (l[iApp] || '—') + '</td><td>' + l[iConf] +
+      (l[iExp] ? '<br><span style="color:#888">' + String(l[iExp]).slice(0, 90) + '</span>' : '') +
+      '</td><td>' + l[iAct] + '</td><td>' + l[iReg] +
       '</td><td>' + String(l[iMsg]).slice(0, 80) + '</td></tr>');
   });
   var compteursTel = {};

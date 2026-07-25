@@ -104,6 +104,18 @@ Menu → **Variables** → « + » :
 - **Alerte « Téléphone muet »** reçue à tort : vérifier que la macro « Signal de vie » est activée et que MacroDroid est exclu de l'optimisation batterie.
 - **Tout couper** : widget `TRANSMISSION_ACTIVE` = Faux (téléphone) — et/ou `MODE` reste sur OBSERVATION (Sheet, onglet Config).
 
+## Mise à jour v1.1 (transparence des analyses) — après les premiers tests
+
+La version 1.1 du `Code.gs` (dans ce dépôt) ajoute dans chaque proposition et dans le résumé :
+la réservation retrouvée en clair, l'ambiguïté si plusieurs réservations partagent le numéro,
+et l'explication courte du score de confiance. Pour l'activer :
+
+1. Ouvrir le projet « SMS-Voyageurs » → remplacer tout `Code.gs` par la version du dépôt.
+2. Dans le Sheet, onglet Journal : ajouter l'en-tête `explication` dans la première cellule vide
+   de la ligne 1 (colonne U) — ou, si le Journal est encore vide, supprimer l'onglet et relancer `setup()`.
+3. « Déployer → Gérer les déploiements → ✏️ Modifier → Version : Nouvelle version → Déployer »
+   (l'URL /exec ne change pas, MacroDroid n'est pas à modifier).
+
 ## Retour arrière complet
 
 Désactiver les 2 macros MacroDroid (ou désinstaller l'application). Le robot Booking n'est pas concerné : aucun de ses fichiers, déploiements ou déclencheurs n'a été touché.

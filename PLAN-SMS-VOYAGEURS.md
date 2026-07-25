@@ -302,7 +302,36 @@ Rien d'autre : pas d'accès au micro, à la position, aux photos.
 
 ---
 
-## 12. Questions à valider par Claudine avant de commencer
+## 12. Feuille de route — évolutions demandées par Claudine le 24/07/2026
+
+Vérification faite : **l'architecture actuelle permet tous ces ajouts sans reconstruction** — le pipeline est modulaire (webhook → analyse → règles → journal → notifications), chaque évolution s'y branche.
+
+### A. Transparence des propositions (points 1 et 2) — **code prêt (v1.1), à activer au prochain redéploiement**
+
+- Chaque proposition et le résumé du soir affichent la **réservation retrouvée** : voyageur, logement, dates, numéro reconnu ou non, et **l'ambiguïté si plusieurs réservations partagent le même numéro** (dans ce cas la confiance est plafonnée et la réponse demande le logement).
+- Chaque analyse affiche **le score de confiance + son explication courte** : éléments qui fondent la décision et éléments manquants. Exemple : « Confiance 92 : numéro reconnu, arrivée aujourd'hui, demande correspondant à un modèle connu » / « Confiance 48 : deux réservations trouvées pour ce numéro, logement non précisé ».
+- Activation : simple copier-coller du nouveau `Code.gs` + « Déployer → Gérer les déploiements → Modifier → Nouvelle version » (2 minutes, après les premiers tests de la phase 1).
+
+### B. Module séparé « Suivi opérationnel » (points 3 à 7) — à construire en phase 1b, d'abord en mode ombre
+
+Détection, dans les SMS des **prestataires** (puis WhatsApp à terme), des actions demandées : linge/serviettes manquants, consommables à racheter, équipement cassé, réparation, problème de ménage, anomalie, action urgente avant arrivée.
+
+- **Tableau global des tâches** (nouvel onglet `Taches` du même Sheet) : logement, demande, catégorie, urgence, échéance, signalé par, responsable, statut (à faire / en cours / commandé / terminé / reporté), date du dernier rappel.
+- **Anti-doublon intelligent** : avant de créer une tâche, l'IA compare aux tâches ouvertes du même logement — même problème = complément de la tâche existante (pas de doublon).
+- **Rappel du soir** uniquement pour les actions non terminées (« Il fallait acheter 4 grandes serviettes pour Apolove. Fait, à reporter ou à déléguer ? ») avec **réponse en langage naturel** (« Serviettes fait. Siphon demain. Étendoir commandé. ») qui met à jour le tableau — même mécanique éprouvée que la « Machine à avis » (réponse à l'e-mail, lue par le robot).
+- **Détection des récurrences** (passage hebdomadaire) : plusieurs manques de serviettes → proposer un stock minimum ; même siphon signalé plusieurs fois → proposer une réparation durable ; achats d'urgence répétés → proposer une liste de stock de sécurité par logement.
+- **Mode ombre d'abord** (règle 7) : pendant l'observation, aucune tâche définitive et aucun envoi — le module journalise « ce qu'il AURAIT détecté et créé » dans un onglet dédié, pour validation du comportement avant activation.
+- **WhatsApp (plus tard)** : piste identifiée — MacroDroid sait lire les notifications WhatsApp (déclencheur « Notification »), même circuit local → webhook. À valider le moment venu, avec les mêmes règles de filtrage local.
+
+### C. Ordre d'activation prévu
+
+1. Phase 1 (en cours) : observation SMS.
+2. v1.1 : transparence réservation + explication de confiance (redéploiement simple).
+3. Phase 1b : Suivi opérationnel en mode ombre (SMS prestataires).
+4. Phase 2 : envois automatiques limités (voyageurs) + activation du tableau de tâches.
+5. Ensuite : rappel du soir interactif, récurrences, WhatsApp.
+
+## 13. Questions à valider par Claudine avant de commencer
 
 1. **Passerelle** : d'accord pour MacroDroid (~6 €) ? (sinon : appli gateway open source en plan B)
 2. **Code existant** : les détails du robot Booking sont dans la session « FIN ROBOT MESSA BEDS24 guest response bot » — au démarrage de l'implémentation, soit tu relances cette session pour me transmettre le code, soit je te guide pas à pas pour le copier depuis script.google.com.
