@@ -96,8 +96,14 @@ function setup() {
   if (!ss.getSheetByName(TAB_CONV)) {
     ss.insertSheet(TAB_CONV).appendRow(['numero', 'dernier_contact', 'statut', 'tentatives_identification', 'note']);
   }
-  if (!ss.getSheetByName('ExclusServeur')) {
-    ss.insertSheet('ExclusServeur').appendRow(['numero', 'note (facultatif : famille, banquier…)']);
+  // Annuaire central : UNE seule configuration pour tous les numéros connus.
+  // categorie = PROTEGE (vie privée : totalement ignoré) | PRESTATAIRE | VOYAGEUR
+  if (!ss.getSheetByName('Annuaire')) {
+    ss.insertSheet('Annuaire').appendRow(['categorie (PROTEGE / PRESTATAIRE / VOYAGEUR)', 'nom', 'numero']);
+  }
+  // Contacts dont le classement automatique était incertain : à trancher par Claudine.
+  if (!ss.getSheetByName('AValider')) {
+    ss.insertSheet('AValider').appendRow(['nom', 'numero_masque', 'raison', 'ajoute_le']);
   }
   if (!ss.getSheetByName(TAB_LOG)) ss.insertSheet(TAB_LOG).appendRow(['date', 'quoi', 'detail']);
   var props = PropertiesService.getScriptProperties();
@@ -165,14 +171,44 @@ function estNumeroCourt(brut) {
   return !(n.charAt(0) === '+' && n.length >= 11);
 }
 
-function estExcluServeur_(numero) {
-  var sheet = ss_().getSheetByName('ExclusServeur');
-  if (!sheet) return false;
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] && normaliserNumero(data[i][0]) === numero) return true;
+/** Annuaire central (onglet Annuaire : categorie | nom | numero).
+ *  Compatibilité : lit aussi l'ancien onglet ExclusServeur (traité comme PROTEGE). */
+function chercherAnnuaire_(numero) {
+  var ss = ss_();
+  var sheet = ss.getSheetByName('Annuaire');
+  if (sheet) {
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][2] && normaliserNumero(data[i][2]) === numero) {
+        return { categorie: String(data[i][0]).trim().toUpperCase(), nom: String(data[i][1] || '') };
+      }
+    }
   }
-  return false;
+  var legacy = ss.getSheetByName('ExclusServeur');
+  if (legacy) {
+    var d2 = legacy.getDataRange().getValues();
+    for (var j = 1; j < d2.length; j++) {
+      if (d2[j][0] && normaliserNumero(d2[j][0]) === numero) {
+        return { categorie: 'PROTEGE', nom: String(d2[j][1] || '') };
+      }
+    }
+  }
+  return null;
+}
+
+function compteurJour_(cle) {
+  var props = PropertiesService.getScriptProperties();
+  var jour = Utilities.formatDate(new Date(), 'Europe/Paris', 'yyyy-MM-dd');
+  var brut = props.getProperty(cle) || '';
+  var n = (brut.indexOf(jour) === 0) ? Number(brut.split('|')[1] || 0) : 0;
+  props.setProperty(cle, jour + '|' + (n + 1));
+}
+
+function lireCompteurJour_(cle) {
+  var props = PropertiesService.getScriptProperties();
+  var jour = Utilities.formatDate(new Date(), 'Europe/Paris', 'yyyy-MM-dd');
+  var brut = props.getProperty(cle) || '';
+  return (brut.indexOf(jour) === 0) ? Number(brut.split('|')[1] || 0) : 0;
 }
 
 /** Sheets convertit parfois les dates écrites en texte en vraies dates :
@@ -257,13 +293,26 @@ function traiterSms_(body) {
 
   var id = idNouveau_();
 
-  // Confidentialité : numéros personnels listés dans l'onglet ExclusServeur —
-  // écartés AVANT toute analyse IA, contenu du message jamais enregistré.
-  if (estExcluServeur_(numero)) {
-    journal_(id, numero, { texte: '(contenu non enregistré — numéro personnel)', contact_connu: body.contact_connu, categorie_locale: 'personnel' },
-      null, { categorie: 'personnel_exclu' }, 'ignorer', 'exclus-serveur', '');
-    return { ok: true, action: 'ignorer', raison: 'numéro personnel (ExclusServeur)' };
+  // Annuaire central : le traitement dépend de la catégorie du numéro.
+  var fiche = chercherAnnuaire_(numero);
+  if (fiche && fiche.categorie === 'PROTEGE') {
+    // Vie privée : ni IA, ni Beds24, ni ligne dans le tableau, ni notification,
+    // ni e-mail. Seul un compteur anonyme est incrémenté pour le résumé du soir.
+    compteurJour_('CNT_PROTEGES');
+    return { ok: true, action: 'ignorer', raison: 'numéro protégé' };
   }
+  if (fiche && fiche.categorie === 'PRESTATAIRE') {
+    // Prestataires : SMS simplement enregistré (ni Beds24, ni IA, ni e-mail).
+    // Prépare le futur module « Suivi opérationnel ».
+    journal_(id, numero, body, null,
+      { categorie: 'prestataire', note_interne: fiche.nom || '' }, 'classer', 'annuaire-prestataire', '');
+    return { ok: true, action: 'classer', categorie: 'prestataire' };
+  }
+  if (fiche && fiche.categorie === 'VOYAGEUR') {
+    // Voyageur identifié dans l'annuaire : traitement normal, avec l'info en plus.
+    body.categorie_locale = 'voyageur_annuaire : ' + (fiche.nom || '');
+  }
+  // Numéro absent de l'annuaire (INCONNU) : traitement normal ci-dessous.
 
   // Plafond IA quotidien
   if (!quotaIaOk_()) {
@@ -677,6 +726,7 @@ function resumeQuotidien() {
           '<ul><li>SMS transmis par le téléphone : <b>' + stats.total + '</b></li>' +
           '<li>Bloqués localement sur le téléphone (jamais transmis) : <b>' + (compteursTel.bloques_total != null ? compteursTel.bloques_total : '?') + '</b>' +
           ' (personnels : ' + (compteursTel.perso != null ? compteursTel.perso : '?') + ', automatiques/courts : ' + (compteursTel.courts != null ? compteursTel.courts : '?') + ')</li>' +
+          '<li>SMS de numéros protégés (vie privée — jamais enregistrés ni analysés) : <b>' + lireCompteurJour_('CNT_PROTEGES') + '</b></li>' +
           '<li>Voyageurs identifiés ou probables : <b>' + stats.voyageurs + '</b></li>' +
           '<li>Propositions en attente : <b>' + stats.propositions + '</b> · Alertes : <b>' + stats.alertes + '</b></li>' +
           '<li>Non identifiés : <b>' + stats.nonIdentifies + '</b> · Erreurs techniques : <b>' + stats.erreurs + '</b></li>' +
