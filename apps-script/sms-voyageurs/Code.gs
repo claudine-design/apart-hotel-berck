@@ -118,7 +118,24 @@ function log_(quoi, detail) {
 }
 
 function secretOk_(s) {
-  return s && s === PropertiesService.getScriptProperties().getProperty('SECRET_SMS');
+  return s && String(s).trim() === PropertiesService.getScriptProperties().getProperty('SECRET_SMS');
+}
+
+/** Analyse JSON tolérante : répare les dégâts fréquents des copier-coller
+ *  (guillemets typographiques ajoutés par Gmail, retours à la ligne du SMS
+ *  ou du reformatage). Renvoie l'objet, ou null si vraiment illisible. */
+function parseTolerant_(brut) {
+  var b = String(brut || '').trim();
+  var droit = b.replace(/[“”„‟]/g, '"').replace(/[‘’‚]/g, "'");
+  var essais = [b, droit, droit.replace(/[\r\n]+/g, '\\n'), droit.replace(/[\r\n]+/g, ' ')];
+  for (var i = 0; i < essais.length; i++) {
+    try {
+      var o = JSON.parse(essais[i]);
+      if (i > 0) log_('recu', 'JSON réparé automatiquement (variante ' + i + ')');
+      return o;
+    } catch (e) {}
+  }
+  return null;
 }
 
 function json_(o) {
@@ -162,8 +179,8 @@ function doPost(e) {
     });
     log_('recu', brutMasque.slice(0, 400) || '(corps vide)');
   } catch (errLog) {}
-  var body;
-  try { body = JSON.parse(brut); } catch (err) { log_('recu', 'REJET: JSON invalide'); return json_({ error: 'JSON invalide' }); }
+  var body = parseTolerant_(brut);
+  if (!body) { log_('recu', 'REJET: JSON invalide (réparations tentées sans succès)'); return json_({ error: 'JSON invalide' }); }
   if (!secretOk_(body.secret)) { log_('recu', 'REJET: mauvais secret'); return json_({ error: 'secret' }); }
 
   var props = PropertiesService.getScriptProperties();
