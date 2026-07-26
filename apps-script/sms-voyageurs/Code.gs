@@ -36,7 +36,7 @@ function ss_() { return SpreadsheetApp.openById(SHEET_ID); }
 var COLS_JOURNAL = ['id', 'date_heure', 'numero', 'contact_connu', 'categorie_locale',
   'message', 'resa_id', 'resa_appart', 'resa_arrivee', 'resa_depart', 'resa_statut',
   'categorie', 'intention', 'confiance', 'action', 'regle', 'proposition',
-  'statut', 'erreur', 'intervention_manuelle', 'explication'];
+  'statut', 'erreur', 'intervention_manuelle', 'explication', 'classer_en'];
 
 var CONFIG_DEFAUT = [
   ['MODE', 'OBSERVATION', 'OBSERVATION = classe + propose, aucun envoi | TEST = simule les envois | PRODUCTION (phase 2)'],
@@ -78,6 +78,15 @@ var REGLES_DEFAUT = [
 function setup() {
   var ss = ss_();
   if (!ss.getSheetByName(TAB_JOURNAL)) ss.insertSheet(TAB_JOURNAL).appendRow(COLS_JOURNAL);
+  // Met à jour l'en-tête du Journal (nouvelles colonnes) + menu déroulant de classement rapide
+  var j = ss.getSheetByName(TAB_JOURNAL);
+  j.getRange(1, 1, 1, COLS_JOURNAL.length).setValues([COLS_JOURNAL]);
+  var colClasser = COLS_JOURNAL.indexOf('classer_en') + 1;
+  var regle = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['PROTEGE', 'PRESTATAIRE', 'VOYAGEUR'], true)
+    .setAllowInvalid(true).setHelpText('Choisir une catégorie : le robot l\'ajoute à l\'Annuaire automatiquement.')
+    .build();
+  j.getRange(2, colClasser, 2000, 1).setDataValidation(regle);
   if (!ss.getSheetByName(TAB_CONFIG)) {
     var c = ss.insertSheet(TAB_CONFIG);
     c.appendRow(['cle', 'valeur', 'explication']);
@@ -113,11 +122,50 @@ function setup() {
 
 function installerTriggers() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (['resumeQuotidien', 'veilleSilence'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
+    if (['resumeQuotidien', 'veilleSilence', 'onEditJournal'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('resumeQuotidien').timeBased().everyDays(1).atHour(20).nearMinute(30).create();
   ScriptApp.newTrigger('veilleSilence').timeBased().everyHours(1).create();
-  log_('triggers', 'resumeQuotidien 20h30 + veilleSilence horaire installés');
+  ScriptApp.newTrigger('onEditJournal').forSpreadsheet(SHEET_ID).onEdit().create();
+  log_('triggers', 'resumeQuotidien 20h30 + veilleSilence horaire + classement rapide (onEdit) installés');
+}
+
+/** Classement rapide depuis le Journal : Claudine choisit PROTEGE / PRESTATAIRE /
+ *  VOYAGEUR dans la colonne « classer_en » → le numéro est ajouté (ou mis à
+ *  jour) dans l'Annuaire, et la cellule affiche ✔. */
+function onEditJournal(e) {
+  try {
+    if (!e || !e.range) return;
+    var sheet = e.range.getSheet();
+    if (sheet.getName() !== TAB_JOURNAL) return;
+    var colClasser = COLS_JOURNAL.indexOf('classer_en') + 1;
+    if (e.range.getColumn() !== colClasser || e.range.getRow() < 2) return;
+    var val = String(e.range.getValue() || '').toUpperCase().trim();
+    if (['PROTEGE', 'PRESTATAIRE', 'VOYAGEUR'].indexOf(val) < 0) return;
+
+    var ligne = sheet.getRange(e.range.getRow(), 1, 1, COLS_JOURNAL.length).getValues()[0];
+    var numeroBrut = String(ligne[COLS_JOURNAL.indexOf('numero')] || '');
+    var nom = String(ligne[COLS_JOURNAL.indexOf('contact_connu')] || '');
+    var estWa = numeroBrut.indexOf('wa:') === 0;
+    var numNorm = estWa ? '' : normaliserNumero(numeroBrut);
+    if (estWa && !nom) nom = numeroBrut.slice(3);
+    if (!numNorm && !nom) { e.range.setValue('⚠ numéro introuvable'); return; }
+
+    var annuaire = ss_().getSheetByName('Annuaire');
+    if (!annuaire) { e.range.setValue('⚠ onglet Annuaire absent'); return; }
+    var data = annuaire.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (numNorm && data[i][2] && normaliserNumero(data[i][2]) === numNorm) {
+        annuaire.getRange(i + 1, 1).setValue(val); // catégorie mise à jour
+        e.range.setValue('✔ ' + val);
+        log_('classement', masquer(numNorm) + ' -> ' + val + ' (mis à jour depuis le Journal)');
+        return;
+      }
+    }
+    annuaire.appendRow([val, nom, numNorm]);
+    e.range.setValue('✔ ' + val);
+    log_('classement', (numNorm ? masquer(numNorm) : nom) + ' -> ' + val + ' (ajouté depuis le Journal)');
+  } catch (err) { log_('classement', 'erreur onEdit: ' + err.message); }
 }
 
 /* ================= OUTILS ================= */
@@ -707,7 +755,8 @@ function journal_(id, numero, body, resa, analyse, action, regle, erreur) {
     'journalise', erreur || '', '',
     String(analyse.explication_confiance || '') +
       (analyse.elements_manquants ? ' | manque : ' + analyse.elements_manquants : '') +
-      (resa && resa.ambigu ? ' | ambiguïté : ' + resa.nb_resas + ' résas (' + resa.autres + ')' : '')]);
+      (resa && resa.ambigu ? ' | ambiguïté : ' + resa.nb_resas + ' résas (' + resa.autres + ')' : ''),
+    '']);
 }
 
 function majConversation_(numero, analyse) {
