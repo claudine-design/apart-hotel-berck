@@ -250,11 +250,11 @@ function doPost(e) {
     return json_({ ok: true });
   }
   if (body.action === 'test') return json_({ ok: true, mode: config_('MODE', 'OBSERVATION') });
-  if (body.action !== 'sms') return json_({ error: 'action inconnue' });
+  if (body.action !== 'sms' && body.action !== 'whatsapp') return json_({ error: 'action inconnue' });
 
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(20000)) return json_({ error: 'occupé, réessayer' });
-  try { return json_(traiterSms_(body)); }
+  try { return json_(body.action === 'whatsapp' ? traiterWhatsapp_(body) : traiterSms_(body)); }
   catch (err) {
     log_('erreur', 'doPost: ' + err.message);
     alerteTechnique_('Erreur traitement SMS', err.message);
@@ -362,6 +362,124 @@ function traiterSms_(body) {
     log_('simulation', id + ' : aurait envoyé (mode ' + config_('MODE', 'OBSERVATION') + ')');
   }
   return { ok: true, action: decision.action, categorie: analyse.categorie, confiance: analyse.confiance };
+}
+
+/* ---------------- WhatsApp (via notifications — identification par NOM) ---------------- */
+
+/** Traite un message WhatsApp transmis par le téléphone (notification).
+ *  Pas de numéro sur ce canal : identification par le NOM de l'expéditeur,
+ *  comparé à l'Annuaire. Jamais d'information sensible sur ce canal. */
+function traiterWhatsapp_(body) {
+  var nom = String(body.expediteur || '').trim();
+  var texte = String(body.texte || '').trim();
+  if (!nom || !texte) return { ignore: 'expéditeur ou texte vide' };
+  // Notifications de regroupement WhatsApp (« 3 messages de 2 conversations ») : à ignorer
+  if (/^\d+\s+(nouveaux?\s+)?messages?/i.test(texte) || /messages? de \d+ conversations?/i.test(texte) ||
+      nom.toLowerCase() === 'whatsapp') {
+    return { ignore: 'notification de regroupement' };
+  }
+  var cache = CacheService.getScriptCache();
+  var cle = 'wa_' + Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, nom + '|' + texte));
+  if (cache.get(cle)) { return { ignore: 'doublon' }; }
+  cache.put(cle, '1', Number(config_('FENETRE_ANTI_DOUBLON_MIN', '10')) * 60);
+
+  var id = 'WA-' + Utilities.formatDate(new Date(), 'Europe/Paris', 'yyyyMMdd-HHmmss') + '-' + Math.floor(Math.random() * 900 + 100);
+  var identifiant = 'wa:' + nom; // pas de numéro sur ce canal
+
+  var fiche = annuaireParNom_(nom);
+  if (fiche && fiche.categorie === 'PROTEGE') {
+    compteurJour_('CNT_PROTEGES');
+    return { ok: true, action: 'ignorer', raison: 'contact protégé' };
+  }
+  if (fiche && fiche.categorie === 'PRESTATAIRE') {
+    journal_(id, identifiant, { texte: texte, contact_connu: nom, categorie_locale: 'prestataire (WhatsApp)' },
+      null, { categorie: 'prestataire', note_interne: fiche.nom || '' }, 'classer', 'annuaire-prestataire-wa', '');
+    return { ok: true, action: 'classer', categorie: 'prestataire' };
+  }
+
+  if (!quotaIaOk_()) {
+    journal_(id, identifiant, { texte: texte, contact_connu: nom, categorie_locale: 'whatsapp' },
+      null, { categorie: 'ambigu', note_interne: 'plafond IA atteint' }, 'classer', 'plafond-ia', '');
+    return { ok: true, action: 'classer', raison: 'plafond IA' };
+  }
+
+  // Recherche Beds24 par NOM (moins fiable que par numéro : confiance plafonnée)
+  var resa = null, erreurBeds = '';
+  try { resa = chercherResaParNom_(nom); }
+  catch (e) { erreurBeds = e.message; log_('beds24', 'wa échec: ' + e.message); }
+
+  var analyse = analyserSms_(identifiant, texte,
+    { contact_connu: nom, categorie_locale: 'canal WhatsApp — identification par NOM uniquement, jamais d\'information sensible sur ce canal' }, resa);
+  if (!analyse) {
+    journal_(id, identifiant, { texte: texte, contact_connu: nom, categorie_locale: 'whatsapp' },
+      null, { categorie: 'ambigu', note_interne: 'analyse IA en échec' }, 'classer', 'ia-echec', erreurBeds);
+    return { ok: true, action: 'classer', raison: 'IA en échec' };
+  }
+  analyse.confiance = Math.min(Number(analyse.confiance || 0), 60); // nom ≠ preuve : jamais d'envoi auto sur WhatsApp
+  var decision = decider_(analyse);
+  if (decision.action === 'envoyer') decision.action = 'proposer';
+  analyse.proposition_finale = (decision.action === 'proposer') ? (analyse.reponse || '') : '';
+
+  journal_(id, identifiant, { texte: texte, contact_connu: nom, categorie_locale: 'whatsapp' },
+    resa, analyse, decision.action, decision.regle + '+wa', erreurBeds);
+  if (decision.action === 'alerter' || analyse.urgence) alerteUrgence_(identifiant, texte, resa, analyse);
+  if (decision.action === 'proposer' && analyse.proposition_finale) digestProposition_(id, identifiant, texte, resa, analyse);
+  return { ok: true, action: decision.action, categorie: analyse.categorie, confiance: analyse.confiance };
+}
+
+/** Cherche un nom dans l'Annuaire (comparaison souple, insensible à la casse). */
+function annuaireParNom_(nom) {
+  var sheet = ss_().getSheetByName('Annuaire');
+  if (!sheet || !nom) return null;
+  var cible = nom.toLowerCase().trim();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    var n = String(data[i][1] || '').toLowerCase().trim();
+    if (n && (n === cible || cible.indexOf(n) >= 0 || n.indexOf(cible) >= 0)) {
+      return { categorie: String(data[i][0]).trim().toUpperCase(), nom: String(data[i][1]) };
+    }
+  }
+  return null;
+}
+
+/** Réservation Beds24 par NOM du voyageur (canal WhatsApp). */
+function chercherResaParNom_(nom) {
+  if (!nom || nom.length < 3) return null;
+  var tok = beds24TokenLecture_();
+  var resp = UrlFetchApp.fetch('https://api.beds24.com/v2/bookings?searchString=' + encodeURIComponent(nom) +
+    '&arrivalFrom=' + dateStr_(-30) + '&arrivalTo=' + dateStr_(180),
+    { headers: { token: tok }, muteHttpExceptions: true });
+  if (resp.getResponseCode() !== 200) throw new Error('Beds24 HTTP ' + resp.getResponseCode());
+  var data = JSON.parse(resp.getContentText()).data || [];
+  var cible = nom.toLowerCase();
+  var candidats = data.filter(function (b) {
+    var complet = ((b.firstName || '') + ' ' + (b.lastName || '')).toLowerCase();
+    return complet.trim() && (cible.indexOf(complet.trim()) >= 0 || complet.indexOf(cible) >= 0 ||
+      cible.split(/\s+/).every(function (mot) { return mot.length >= 3 && complet.indexOf(mot) >= 0; }));
+  });
+  if (!candidats.length) return null;
+  var aujourdhui = dateStr_(0);
+  candidats.sort(function (a, b) { return sc_(b) - sc_(a); });
+  function sc_(b) {
+    if (String(b.status).toLowerCase() === 'cancelled') return -1;
+    if (b.arrival <= aujourdhui && b.departure >= aujourdhui) return 3;
+    if (b.arrival >= aujourdhui) return 2;
+    return 1;
+  }
+  var actifs = candidats.filter(function (b) { return sc_(b) > 0; });
+  var b = candidats[0];
+  return {
+    id: b.id, propId: b.propertyId, appart: nomAppart_(b.propertyId),
+    prenom: b.firstName || '', nom: b.lastName || '',
+    arrivee: b.arrival, depart: b.departure, statut: b.status,
+    arrive_aujourdhui: b.arrival === aujourdhui,
+    en_cours: (b.arrival <= aujourdhui && b.departure >= aujourdhui),
+    ambigu: actifs.length > 1, nb_resas: actifs.length,
+    autres: actifs.slice(1, 4).map(function (x) {
+      return nomAppart_(x.propertyId) + ' (' + x.arrival + '→' + x.departure + ')';
+    }).join(', '),
+    identification_par_nom: true
+  };
 }
 
 function idNouveau_() {
