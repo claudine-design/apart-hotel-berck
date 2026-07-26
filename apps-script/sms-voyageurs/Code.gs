@@ -34,9 +34,9 @@ var SHEET_ID = PropertiesService.getScriptProperties().getProperty('SHEET_ID') |
 function ss_() { return SpreadsheetApp.openById(SHEET_ID); }
 
 var COLS_JOURNAL = ['id', 'date_heure', 'numero', 'contact_connu', 'categorie_locale',
-  'message', 'resa_id', 'resa_appart', 'resa_arrivee', 'resa_depart', 'resa_statut',
+  'message', 'classer_en', 'resa_id', 'resa_appart', 'resa_arrivee', 'resa_depart', 'resa_statut',
   'categorie', 'intention', 'confiance', 'action', 'regle', 'proposition',
-  'statut', 'erreur', 'intervention_manuelle', 'explication', 'classer_en'];
+  'statut', 'erreur', 'intervention_manuelle', 'explication'];
 
 var CONFIG_DEFAUT = [
   ['MODE', 'OBSERVATION', 'OBSERVATION = classe + propose, aucun envoi | TEST = simule les envois | PRODUCTION (phase 2)'],
@@ -78,8 +78,15 @@ var REGLES_DEFAUT = [
 function setup() {
   var ss = ss_();
   if (!ss.getSheetByName(TAB_JOURNAL)) ss.insertSheet(TAB_JOURNAL).appendRow(COLS_JOURNAL);
-  // Met à jour l'en-tête du Journal (nouvelles colonnes) + menu déroulant de classement rapide
+  // Migration : place la colonne « classer_en » juste après « message » (7e colonne),
+  // en décalant proprement les données existantes si besoin.
   var j = ss.getSheetByName(TAB_JOURNAL);
+  var enTetes = j.getRange(1, 1, 1, Math.max(j.getLastColumn(), 1)).getValues()[0].map(String);
+  if (enTetes[6] !== 'classer_en') {
+    var idxExistant = enTetes.indexOf('classer_en');
+    if (idxExistant >= 0) j.deleteColumn(idxExistant + 1); // ancienne position (fin de tableau)
+    j.insertColumnAfter(6); // après la colonne message
+  }
   j.getRange(1, 1, 1, COLS_JOURNAL.length).setValues([COLS_JOURNAL]);
   var colClasser = COLS_JOURNAL.indexOf('classer_en') + 1;
   var regle = SpreadsheetApp.newDataValidation()
@@ -749,14 +756,14 @@ function journal_(id, numero, body, resa, analyse, action, regle, erreur) {
     id, Utilities.formatDate(new Date(), 'Europe/Paris', 'yyyy-MM-dd HH:mm:ss'),
     numero, body.contact_connu || 'non', body.categorie_locale || '',
     String(body.texte || '').slice(0, 1000),
+    '', // classer_en (menu déroulant, rempli par Claudine)
     resa ? resa.id : '', resa ? resa.appart : '', resa ? resa.arrivee : '', resa ? resa.depart : '', resa ? resa.statut : '',
     analyse.categorie || '', analyse.intention || '', analyse.confiance || '',
     action, regle, String(analyse.proposition_finale || analyse.reponse || '').slice(0, 2000),
     'journalise', erreur || '', '',
     String(analyse.explication_confiance || '') +
       (analyse.elements_manquants ? ' | manque : ' + analyse.elements_manquants : '') +
-      (resa && resa.ambigu ? ' | ambiguïté : ' + resa.nb_resas + ' résas (' + resa.autres + ')' : ''),
-    '']);
+      (resa && resa.ambigu ? ' | ambiguïté : ' + resa.nb_resas + ' résas (' + resa.autres + ')' : '')]);
 }
 
 function majConversation_(numero, analyse) {
