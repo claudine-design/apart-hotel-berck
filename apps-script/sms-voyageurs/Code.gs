@@ -96,6 +96,9 @@ function setup() {
   if (!ss.getSheetByName(TAB_CONV)) {
     ss.insertSheet(TAB_CONV).appendRow(['numero', 'dernier_contact', 'statut', 'tentatives_identification', 'note']);
   }
+  if (!ss.getSheetByName('ExclusServeur')) {
+    ss.insertSheet('ExclusServeur').appendRow(['numero', 'note (facultatif : famille, banquier…)']);
+  }
   if (!ss.getSheetByName(TAB_LOG)) ss.insertSheet(TAB_LOG).appendRow(['date', 'quoi', 'detail']);
   var props = PropertiesService.getScriptProperties();
   if (!props.getProperty('SECRET_SMS')) props.setProperty('SECRET_SMS', Utilities.getUuid());
@@ -160,6 +163,25 @@ function normaliserNumero(brut) {
 function estNumeroCourt(brut) {
   var n = normaliserNumero(brut);
   return !(n.charAt(0) === '+' && n.length >= 11);
+}
+
+function estExcluServeur_(numero) {
+  var sheet = ss_().getSheetByName('ExclusServeur');
+  if (!sheet) return false;
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] && normaliserNumero(data[i][0]) === numero) return true;
+  }
+  return false;
+}
+
+/** Sheets convertit parfois les dates écrites en texte en vraies dates :
+ *  ces deux aides relisent la date/l'heure d'une ligne quel que soit le format. */
+function dateLigne_(v) {
+  return (v instanceof Date) ? Utilities.formatDate(v, 'Europe/Paris', 'yyyy-MM-dd') : String(v).slice(0, 10);
+}
+function heureLigne_(v) {
+  return (v instanceof Date) ? Utilities.formatDate(v, 'Europe/Paris', 'HH:mm') : String(v).slice(11, 16);
 }
 
 function masquer(num) {
@@ -234,6 +256,14 @@ function traiterSms_(body) {
   cache.put(cle, '1', Number(config_('FENETRE_ANTI_DOUBLON_MIN', '10')) * 60);
 
   var id = idNouveau_();
+
+  // Confidentialité : numéros personnels listés dans l'onglet ExclusServeur —
+  // écartés AVANT toute analyse IA, contenu du message jamais enregistré.
+  if (estExcluServeur_(numero)) {
+    journal_(id, numero, { texte: '(contenu non enregistré — numéro personnel)', contact_connu: body.contact_connu, categorie_locale: 'personnel' },
+      null, { categorie: 'personnel_exclu' }, 'ignorer', 'exclus-serveur', '');
+    return { ok: true, action: 'ignorer', raison: 'numéro personnel (ExclusServeur)' };
+  }
 
   // Plafond IA quotidien
   if (!quotaIaOk_()) {
@@ -618,7 +648,7 @@ function resumeQuotidien() {
       iProp = COLS_JOURNAL.indexOf('proposition'), iExp = COLS_JOURNAL.indexOf('explication');
   var lignes = [];
   for (var i = 1; i < data.length; i++) {
-    if (String(data[i][iDate]).indexOf(jour) === 0) lignes.push(data[i]);
+    if (dateLigne_(data[i][iDate]) === jour) lignes.push(data[i]);
   }
   var stats = { total: lignes.length, ignores: 0, voyageurs: 0, propositions: 0, alertes: 0, nonIdentifies: 0, erreurs: 0 };
   var detail = [];
@@ -629,7 +659,7 @@ function resumeQuotidien() {
     if (l[iAct] === 'alerter') stats.alertes++;
     if (String(l[iCat]) === 'voyageur_non_reconnu' || String(l[iCat]) === 'inconnu') stats.nonIdentifies++;
     if (l[iErr]) stats.erreurs++;
-    detail.push('<tr><td>' + String(l[iDate]).slice(11, 16) + '</td><td>' + masquer(l[iNum]) + '</td><td>' +
+    detail.push('<tr><td>' + heureLigne_(l[iDate]) + '</td><td>' + masquer(l[iNum]) + '</td><td>' +
       l[iCat] + '</td><td>' + (l[iApp] || '—') + '</td><td>' + l[iConf] +
       (l[iExp] ? '<br><span style="color:#888">' + String(l[iExp]).slice(0, 90) + '</span>' : '') +
       '</td><td>' + l[iAct] + '</td><td>' + l[iReg] +
