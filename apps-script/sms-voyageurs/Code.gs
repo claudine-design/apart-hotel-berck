@@ -293,6 +293,16 @@ function traiterSms_(body) {
 
   var id = idNouveau_();
 
+  // Numéros réservés aux tests techniques (+336000000XX) : journalisés pour
+  // vérification, mais JAMAIS d'analyse IA ni d'alerte e-mail/WhatsApp —
+  // les répétitions se font rideau fermé (leçon du 26/07 au soir).
+  if (/^\+33600000\d{3}$/.test(numero) || /^\+3360{7}\d{1,2}$/.test(numero)) {
+    journal_(id, numero, body, null,
+      { categorie: 'test_technique', note_interne: 'numéro de test — aucune alerte émise' },
+      'classer', 'test-technique', '');
+    return { ok: true, action: 'classer', test: true };
+  }
+
   // Annuaire central : le traitement dépend de la catégorie du numéro.
   var fiche = chercherAnnuaire_(numero);
   if (fiche && fiche.categorie === 'PROTEGE') {
