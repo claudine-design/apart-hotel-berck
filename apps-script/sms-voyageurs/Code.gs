@@ -153,9 +153,18 @@ function masquer(num) {
 /* ================= WEBHOOK ================= */
 
 function doPost(e) {
+  // Journal de diagnostic : TOUTE requête reçue est tracée dans l'onglet Log,
+  // même refusée (secret masqué : remplacé par OK, ou KO + 4 premiers caractères).
+  var brut = (e && e.postData && e.postData.contents) ? String(e.postData.contents) : '';
+  try {
+    var brutMasque = brut.replace(/"secret"\s*:\s*"([^"]*)"/, function (tout, s) {
+      return '"secret":"' + (secretOk_(s) ? 'OK' : 'KO(' + s.slice(0, 4) + '…, ' + s.length + ' car.)') + '"';
+    });
+    log_('recu', brutMasque.slice(0, 400) || '(corps vide)');
+  } catch (errLog) {}
   var body;
-  try { body = JSON.parse(e.postData.contents); } catch (err) { return json_({ error: 'JSON invalide' }); }
-  if (!secretOk_(body.secret)) return json_({ error: 'secret' });
+  try { body = JSON.parse(brut); } catch (err) { log_('recu', 'REJET: JSON invalide'); return json_({ error: 'JSON invalide' }); }
+  if (!secretOk_(body.secret)) { log_('recu', 'REJET: mauvais secret'); return json_({ error: 'secret' }); }
 
   var props = PropertiesService.getScriptProperties();
   props.setProperty('LAST_PHONE_CONTACT', new Date().toISOString());
@@ -385,7 +394,9 @@ function analyserSms_(numero, texte, body, resa) {
   var kb = chargerKB_();
   var contexte = 'SMS reçu le ' + Utilities.formatDate(new Date(), 'Europe/Paris', 'yyyy-MM-dd HH:mm') + '\n' +
     'Numéro (normalisé) : ' + numero + '\n' +
-    'Contact dans le téléphone : ' + (body.contact_connu === 'oui' ? 'OUI' + (body.categorie_locale ? ' — catégorie locale : ' + body.categorie_locale : '') : 'NON (numéro inconnu)') + '\n' +
+    'Contact dans le téléphone : ' + ((body.contact_connu && body.contact_connu !== 'non' && body.contact_connu.indexOf('{') < 0)
+      ? 'OUI — nom : ' + body.contact_connu + (body.categorie_locale && body.categorie_locale.indexOf('{') < 0 ? ' — catégorie locale : ' + body.categorie_locale : '')
+      : 'NON (numéro inconnu)') + '\n' +
     'Réservation Beds24 correspondant au numéro : ' + (resa
       ? 'OUI — ' + resa.appart + ', ' + resa.prenom + ' ' + resa.nom + ', séjour ' + resa.arrivee + ' → ' + resa.depart +
         ' (statut ' + resa.statut + (resa.arrive_aujourdhui ? ', ARRIVE AUJOURD\'HUI' : '') + (resa.en_cours ? ', séjour EN COURS' : '') + ')' +
