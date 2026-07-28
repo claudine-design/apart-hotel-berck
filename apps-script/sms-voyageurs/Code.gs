@@ -212,11 +212,14 @@ function config_(cle, defaut) {
   return defaut;
 }
 
-/** +33612345678 <- 0612345678 / 0033612345678 / +33 6 12 34 56 78. Garde tel quel l'international. */
+/** +33612345678 <- 0612345678 / 0033612345678 / 33612345678 (sans + ni 0,
+ *  format livré par certains opérateurs) / +33 6 12 34 56 78. Espaces,
+ *  points, tirets et parenthèses ignorés. Garde tel quel l'international. */
 function normaliserNumero(brut) {
   var n = String(brut || '').replace(/[^0-9+]/g, '');
   if (n.indexOf('00') === 0) n = '+' + n.slice(2);
   if (n.charAt(0) !== '+' && /^0[1-9][0-9]{8}$/.test(n)) n = '+33' + n.slice(1);
+  if (n.charAt(0) !== '+' && /^33[1-9][0-9]{8}$/.test(n)) n = '+' + n; // « 336… » nu
   return n;
 }
 
@@ -579,19 +582,19 @@ function beds24TokenLecture_() {
 }
 
 /** Cherche une réservation dont le téléphone correspond au numéro (E.164).
+ *  Deux passes : searchString (rapide) puis balayage des arrivées proches
+ *  avec comparaison locale des téléphones (searchString de Beds24 ne cherche
+ *  pas fiablement dans les numéros — bug du 27/07, voyageur du jour manqué).
  *  Renvoie null si aucune, sinon la plus pertinente (en cours > à venir > passée récente). */
 function chercherReservationBeds24_(numE164) {
-  var tok = beds24TokenLecture_();
   var digits = numE164.replace(/\D/g, '').slice(-9); // 9 derniers chiffres = identité FR stable
-  var resp = UrlFetchApp.fetch('https://api.beds24.com/v2/bookings?searchString=' + encodeURIComponent(digits) +
-    '&arrivalFrom=' + dateStr_(-30) + '&arrivalTo=' + dateStr_(180),
-    { headers: { token: tok }, muteHttpExceptions: true });
-  if (resp.getResponseCode() !== 200) throw new Error('Beds24 HTTP ' + resp.getResponseCode());
-  var data = JSON.parse(resp.getContentText()).data || [];
-  var candidats = data.filter(function (b) {
-    var tels = [b.phone, b.mobile].map(function (t) { return String(t || '').replace(/\D/g, ''); });
-    return tels.some(function (t) { return t && t.slice(-9) === digits; });
-  });
+  if (digits.length < 9) return null;
+  var candidats = filtreParTel_(beds24Recherche_('searchString=' + encodeURIComponent(digits) +
+    '&arrivalFrom=' + dateStr_(-30) + '&arrivalTo=' + dateStr_(180)), digits);
+  if (!candidats.length) {
+    candidats = filtreParTel_(beds24ArriveesProches_(), digits);
+    if (candidats.length) log_('beds24', 'résa trouvée par balayage (searchString muet) pour ' + masquer(numE164));
+  }
   if (!candidats.length) return null;
   var aujourdhui = dateStr_(0);
   candidats.sort(function (a, b) { return score_(b) - score_(a); });
@@ -616,6 +619,43 @@ function chercherReservationBeds24_(numE164) {
       return nomAppart_(x.propertyId) + ' (' + x.arrival + '→' + x.departure + ')';
     }).join(', ')
   };
+}
+
+function beds24Recherche_(params) {
+  var tok = beds24TokenLecture_();
+  var resp = UrlFetchApp.fetch('https://api.beds24.com/v2/bookings?' + params,
+    { headers: { token: tok }, muteHttpExceptions: true });
+  if (resp.getResponseCode() !== 200) throw new Error('Beds24 HTTP ' + resp.getResponseCode());
+  return JSON.parse(resp.getContentText()).data || [];
+}
+
+function filtreParTel_(data, digits) {
+  return data.filter(function (b) {
+    var tels = [b.phone, b.mobile].map(function (t) { return String(t || '').replace(/\D/g, ''); });
+    return tels.some(function (t) { return t && t.slice(-9) === digits; });
+  });
+}
+
+/** Balayage des réservations à arrivée proche (J-14 → J+60), avec cache 10 min
+ *  pour préserver les quotas. Sert de filet quand searchString ne trouve rien. */
+function beds24ArriveesProches_() {
+  var cache = CacheService.getScriptCache();
+  var brut = cache.get('b24_arrivees');
+  if (brut) { try { return JSON.parse(brut); } catch (e) {} }
+  var data = [], page = 1;
+  while (page <= 5) {
+    var r = beds24Recherche_('arrivalFrom=' + dateStr_(-14) + '&arrivalTo=' + dateStr_(60) +
+      (page > 1 ? '&page=' + page : ''));
+    data = data.concat(r);
+    if (r.length < 100) break; // dernière page
+    page++;
+  }
+  var compact = data.map(function (b) {
+    return { id: b.id, propertyId: b.propertyId, firstName: b.firstName, lastName: b.lastName,
+             arrival: b.arrival, departure: b.departure, status: b.status, phone: b.phone, mobile: b.mobile };
+  });
+  try { cache.put('b24_arrivees', JSON.stringify(compact), 600); } catch (e) {}
+  return compact;
 }
 
 function dateStr_(decalageJours) {
