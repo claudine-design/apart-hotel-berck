@@ -729,9 +729,10 @@ var SYS_SMS = 'Tu es l\'assistant SMS de Claudine Podvin, hôte d\'appartements 
   'Style des réponses : chaleureux, professionnel, vouvoiement, clair, signé « Claudine ». Jamais robotique, jamais « il est possible que je fasse des erreurs ».\n\n' +
   'CONFIANCE (0-100) : élevée seulement si numéro trouvé dans Beds24 + dates cohérentes + intention claire + aucune demande sensible + aucune contradiction. Toute demande sensible (codes, accès, adresse) ou incohérence plafonne la confiance à 40. Si PLUSIEURS réservations partagent le numéro : confiance maximum 60 et la réponse demande poliment de préciser le logement.\n\n' +
   'EXPLICATION : fournis toujours "explication_confiance" = 1 phrase très courte listant les éléments qui fondent le score (ex. « numéro reconnu, arrivée aujourd\'hui, demande type connue ») et "elements_manquants" = ce qui manque ou reste ambigu (ou null).\n\n' +
+  'CONSEIL : en cas d\'urgence, fournis "conseil_claudine" = 1 à 2 phrases très concrètes pour Claudine : quoi vérifier (arrivée du jour ? quel logement ? paiement ?), quoi faire en premier (appeler ? renvoyer le message d\'accueil ? vérifier la boîte à clés ?). Sinon null.\n\n' +
   'URGENCE uniquement si le message ne peut pas attendre 1 h : voyageur bloqué le jour d\'arrivée, panne majeure, fuite, danger, menace, conflit grave, demande de remboursement agressive.\n\n' +
   'Réponds UNIQUEMENT en JSON valide :\n' +
-  '{"categorie":"...","intention":"annonce_heure_arrivee"|"question_acces"|"question_logement"|"probleme"|"demande_identification"|"conversation_privee"|"publicite"|"autre","heure_arrivee":"17h ou null","confiance":0-100,"explication_confiance":"phrase très courte","elements_manquants":"court ou null","reponse":"proposition EN FRANÇAIS ou null","urgence":null|{"motif":"très court"},"note_interne":"1 phrase ou null"}';
+  '{"categorie":"...","intention":"annonce_heure_arrivee"|"question_acces"|"question_logement"|"probleme"|"demande_identification"|"conversation_privee"|"publicite"|"autre","heure_arrivee":"17h ou null","confiance":0-100,"explication_confiance":"phrase très courte","elements_manquants":"court ou null","reponse":"proposition EN FRANÇAIS ou null","urgence":null|{"motif":"très court"},"conseil_claudine":"1-2 phrases pratiques ou null","note_interne":"1 phrase ou null"}';
 
 function analyserSms_(numero, texte, body, resa) {
   var kb = chargerKB_();
@@ -880,13 +881,18 @@ function digestProposition_(id, numero, texte, resa, analyse) {
 
 function alerteUrgence_(numero, texte, resa, analyse) {
   var motif = (analyse.urgence && analyse.urgence.motif) || analyse.categorie;
+  var conseil = String(analyse.conseil_claudine || analyse.note_interne || '');
+  var reponse = String(analyse.proposition_finale || analyse.reponse || '');
   var to = emails_();
   var titre = '🚨 SMS URGENT — ' + (resa ? resa.appart : masquer(numero)) + ' — ' + String(motif).slice(0, 60);
   if (to.length) {
     try {
       MailApp.sendEmail({ to: to.join(','), subject: titre,
-        htmlBody: '<h2>🚨 ' + motif + '</h2><p><b>' + (resa ? resa.appart + ' — ' + resa.prenom + ' ' + resa.nom : 'Numéro ' + masquer(numero)) +
-          '</b></p><p>💬 « ' + texte + ' »</p><p>Confiance : ' + analyse.confiance + ' · ' + (analyse.note_interne || '') + '</p>' });
+        htmlBody: '<h2>🚨 ' + motif + '</h2><p><b>' + (resa ? resa.appart + ' — ' + resa.prenom + ' ' + resa.nom + ' (' + resa.arrivee + ' → ' + resa.depart + ')' : 'Numéro ' + masquer(numero)) +
+          '</b></p><p>💬 « ' + texte + ' »</p>' +
+          (conseil ? '<p style="background:#fff8e1;border-left:3px solid #f9a825;padding:8px">💡 <b>Conseil :</b> ' + conseil + '</p>' : '') +
+          (reponse ? '<p><b>✉️ Réponse prête à copier :</b></p><div style="background:#f5f7ff;border-left:3px solid #3b5bdb;padding:8px;white-space:pre-wrap">' + reponse + '</div>' : '') +
+          '<p style="color:#888">Confiance : ' + analyse.confiance + '</p>' });
     } catch (e) { log_('urgence', 'mail KO ' + e.message); }
   }
   var props = PropertiesService.getScriptProperties();
@@ -896,7 +902,9 @@ function alerteUrgence_(numero, texte, resa, analyse) {
       UrlFetchApp.fetch('https://api.callmebot.com/whatsapp.php?phone=' + encodeURIComponent(phone) +
         '&apikey=' + encodeURIComponent(key) + '&text=' + encodeURIComponent('🚨 SMS URGENT\n' +
           (resa ? resa.appart + ' — ' + resa.prenom + ' ' + resa.nom : 'Numéro ' + masquer(numero)) + '\n' + motif +
-          '\n« ' + texte.slice(0, 250) + ' »'), { muteHttpExceptions: true });
+          '\n« ' + texte.slice(0, 200) + ' »' +
+          (conseil ? '\n\n💡 ' + conseil.slice(0, 250) : '') +
+          (reponse ? '\n\n✉️ Réponse proposée :\n' + reponse.slice(0, 350) : '')), { muteHttpExceptions: true });
     } catch (e) { log_('urgence', 'whatsapp KO ' + e.message); }
   }
   log_('urgence', titre);
