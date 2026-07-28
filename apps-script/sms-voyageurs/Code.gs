@@ -90,7 +90,7 @@ function setup() {
   j.getRange(1, 1, 1, COLS_JOURNAL.length).setValues([COLS_JOURNAL]);
   var colClasser = COLS_JOURNAL.indexOf('classer_en') + 1;
   var regle = SpreadsheetApp.newDataValidation()
-    .requireValueInList(['PROTEGE', 'PRESTATAIRE', 'VOYAGEUR'], true)
+    .requireValueInList(['PROTEGE', 'PRESTATAIRE', 'VOYAGEUR', 'BANNI'], true)
     .setAllowInvalid(true).setHelpText('Choisir une catégorie : le robot l\'ajoute à l\'Annuaire automatiquement.')
     .build();
   j.getRange(2, colClasser, 2000, 1).setDataValidation(regle);
@@ -148,7 +148,7 @@ function onEditJournal(e) {
     var colClasser = COLS_JOURNAL.indexOf('classer_en') + 1;
     if (e.range.getColumn() !== colClasser || e.range.getRow() < 2) return;
     var val = String(e.range.getValue() || '').toUpperCase().trim();
-    if (['PROTEGE', 'PRESTATAIRE', 'VOYAGEUR'].indexOf(val) < 0) return;
+    if (['PROTEGE', 'PRESTATAIRE', 'VOYAGEUR', 'BANNI'].indexOf(val) < 0) return;
 
     var ligne = sheet.getRange(e.range.getRow(), 1, 1, COLS_JOURNAL.length).getValues()[0];
     var numeroBrut = String(ligne[COLS_JOURNAL.indexOf('numero')] || '');
@@ -376,6 +376,19 @@ function traiterSms_(body) {
       { categorie: 'prestataire', note_interne: fiche.nom || '' }, 'classer', 'annuaire-prestataire', '');
     return { ok: true, action: 'classer', categorie: 'prestataire' };
   }
+  if (fiche && fiche.categorie === 'BANNI') {
+    // Liste noire (CRM anti-bannis) : jamais de proposition de réponse —
+    // alerte immédiate à Claudine, qui décide seule de la suite.
+    journal_(id, numero, body, null,
+      { categorie: 'banni', confiance: 100, note_interne: 'numéro sur liste noire' + (fiche.nom ? ' — ' + fiche.nom : '') },
+      'alerter', 'annuaire-banni', '');
+    alerteUrgence_(numero, texte, null, {
+      categorie: 'banni', confiance: 100,
+      urgence: { motif: '⛔ numéro sur liste noire' + (fiche.nom ? ' (' + fiche.nom + ')' : '') + ' — reprise de contact' },
+      note_interne: 'Aucune réponse proposée : décision de Claudine uniquement.'
+    });
+    return { ok: true, action: 'alerter', categorie: 'banni' };
+  }
   if (fiche && fiche.categorie === 'VOYAGEUR') {
     // Voyageur identifié dans l'annuaire : traitement normal, avec l'info en plus.
     body.categorie_locale = 'voyageur_annuaire : ' + (fiche.nom || '');
@@ -458,6 +471,17 @@ function traiterWhatsapp_(body) {
   if (fiche && fiche.categorie === 'PROTEGE') {
     compteurJour_('CNT_PROTEGES');
     return { ok: true, action: 'ignorer', raison: 'contact protégé' };
+  }
+  if (fiche && fiche.categorie === 'BANNI') {
+    journal_(id, identifiant, { texte: texte, contact_connu: nom, categorie_locale: 'whatsapp' },
+      null, { categorie: 'banni', confiance: 100, note_interne: 'nom sur liste noire — ' + (fiche.nom || nom) },
+      'alerter', 'annuaire-banni-wa', '');
+    alerteUrgence_(identifiant, texte, null, {
+      categorie: 'banni', confiance: 100,
+      urgence: { motif: '⛔ contact sur liste noire (' + (fiche.nom || nom) + ') — WhatsApp' },
+      note_interne: 'Aucune réponse proposée : décision de Claudine uniquement.'
+    });
+    return { ok: true, action: 'alerter', categorie: 'banni' };
   }
   if (fiche && fiche.categorie === 'PRESTATAIRE') {
     journal_(id, identifiant, { texte: texte, contact_connu: nom, categorie_locale: 'prestataire (WhatsApp)' },
