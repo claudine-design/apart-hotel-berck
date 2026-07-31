@@ -44,7 +44,7 @@ var CONFIG_DEFAUT = [
   ['SEUIL_CONFIANCE_ENVOI', '85', 'Phase 2 : confiance minimale pour un envoi automatique'],
   ['SEUIL_CONFIANCE_PROPOSITION', '60', 'En dessous : classement seul + alerte si sensible'],
   ['FENETRE_ANTI_DOUBLON_MIN', '10', 'Même numéro + même texte dans cette fenêtre = ignoré'],
-  ['ALERTE_SILENCE_TELEPHONE_H', '3', 'Alerte si le téléphone est muet plus de N heures (8h-22h)'],
+  ['ALERTE_SILENCE_TELEPHONE_H', '12', 'Alerte si le téléphone est muet plus de N heures (8h-22h). 12 h = adapté au trafic SMS réel, sans macro signal-de-vie.'],
   ['HEURE_RESUME', '20', 'Heure du résumé quotidien (le déclencheur vise ~20h30)'],
   ['MAX_ANALYSES_IA_PAR_JOUR', '60', 'Plafond d appels IA par jour (garde-fou quota)']
 ];
