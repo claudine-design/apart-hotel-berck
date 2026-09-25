@@ -440,8 +440,16 @@ let colorMap  = {};
 let viewYear, viewMonth;
 let activeTab = 'planning';
 
+// Prestataires dont le planning automatique est retiré : Claudine leur communique les ménages à la main.
+// 25/09/2026 : Rémi (décision Claudine). Pour réactiver, retirer la clé du tableau.
+const PRESTAS_MASQUES = ['remi'];
+
 async function init() {
   if (!PRESTA) { showError('Lien invalide. Demande à Claudine ton lien personnel.'); return; }
+  if (PRESTAS_MASQUES.includes(PRESTA)) {
+    showError(`Bonjour ${PRESTA_D === 'Remi' ? 'Rémi' : PRESTA_D},<br><br>Le planning automatique n'est plus disponible.<br>Désormais, Claudine te communique tes ménages directement, à la main.`);
+    return;
+  }
 
   const now = new Date();
   viewYear  = now.getFullYear();
