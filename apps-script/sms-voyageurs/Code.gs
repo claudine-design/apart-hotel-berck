@@ -287,12 +287,18 @@ function masquer(num) {
 
 function doPost(e) {
   // Journal de diagnostic : TOUTE requête reçue est tracée dans l'onglet Log,
-  // même refusée (secret masqué : remplacé par OK, ou KO + 4 premiers caractères).
+  // même refusée — mais SANS le contenu du message (vie privée : un numéro
+  // protégé ne doit laisser aucune trace de ses textes) et numéro masqué.
   var brut = (e && e.postData && e.postData.contents) ? String(e.postData.contents) : '';
   try {
-    var brutMasque = brut.replace(/"secret"\s*:\s*"([^"]*)"/, function (tout, s) {
-      return '"secret":"' + (secretOk_(s) ? 'OK' : 'KO(' + s.slice(0, 4) + '…, ' + s.length + ' car.)') + '"';
-    });
+    var brutMasque = brut
+      .replace(/"secret"\s*:\s*"([^"]*)"/, function (tout, s) {
+        return '"secret":"' + (secretOk_(s) ? 'OK' : 'KO(' + s.slice(0, 4) + '…, ' + s.length + ' car.)') + '"';
+      })
+      .replace(/"texte"\s*:\s*"((?:[^"\\]|\\.)*)"/, function (tout, t) { return '"texte":"(' + t.length + ' car. masqués)"'; })
+      .replace(/"(numero|contact_connu|expediteur)"\s*:\s*"([^"]*)"/g, function (tout, k, v) {
+        return '"' + k + '":"' + (/\d{6,}/.test(v) ? masquer(normaliserNumero(v)) : (v ? v.charAt(0) + '…' : '')) + '"';
+      });
     log_('recu', brutMasque.slice(0, 400) || '(corps vide)');
   } catch (errLog) {}
   var body = parseTolerant_(brut);
@@ -365,8 +371,10 @@ function traiterSms_(body) {
   var fiche = chercherAnnuaire_(numero);
   if (fiche && fiche.categorie === 'PROTEGE') {
     // Vie privée : ni IA, ni Beds24, ni ligne dans le tableau, ni notification,
-    // ni e-mail. Seul un compteur anonyme est incrémenté pour le résumé du soir.
+    // ni e-mail. Seul un compteur anonyme est incrémenté pour le résumé du soir,
+    // et une ligne technique anonyme confirme que l'ignorance est volontaire.
     compteurJour_('CNT_PROTEGES');
+    log_('protege', 'SMS ignoré volontairement (numéro protégé) — aucun contenu conservé');
     return { ok: true, action: 'ignorer', raison: 'numéro protégé' };
   }
   if (fiche && fiche.categorie === 'PRESTATAIRE') {
