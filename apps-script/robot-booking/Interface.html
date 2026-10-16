@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bleu:#3b5bdb; --rouge:#c0392b; --vert:#2e7d32; --fond:#f4f5fb; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:0; background:var(--fond); color:#222; }
+  header { background:var(--bleu); color:#fff; padding:14px 16px; position:sticky; top:0; z-index:5;
+           display:flex; justify-content:space-between; align-items:center; }
+  header h1 { font-size:17px; margin:0; }
+  #compteur { background:rgba(255,255,255,.25); border-radius:12px; padding:2px 10px; font-size:14px; }
+  main { padding:12px; max-width:680px; margin:auto; }
+  .carte { background:#fff; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.08); padding:14px; margin-bottom:14px; }
+  .qui { font-weight:bold; font-size:15px; }
+  .dates { color:#888; font-size:13px; }
+  .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:10px; margin-left:6px; vertical-align:middle; }
+  .b-demande { background:#e7f0ff; color:var(--bleu); }
+  .b-question { background:#e7f0ff; color:var(--bleu); }
+  .b-probleme { background:#ffe9e5; color:var(--rouge); }
+  .b-autre { background:#eee; color:#555; }
+  .alerte { color:var(--rouge); font-size:13px; font-weight:bold; margin:6px 0; }
+  .question { background:#f7f7f7; border-left:3px solid #bbb; padding:8px 10px; margin:8px 0;
+              white-space:pre-wrap; font-size:14px; border-radius:0 6px 6px 0; }
+  details { margin:6px 0; }
+  summary { color:var(--bleu); font-size:13px; cursor:pointer; }
+  .conv { white-space:pre-wrap; font-size:12px; color:#555; background:#fafafa; padding:8px; border-radius:6px; max-height:220px; overflow:auto; }
+  textarea { width:100%; min-height:120px; font:inherit; font-size:14px; padding:10px; border:1px solid #ccd;
+             border-radius:8px; background:#f5f7ff; resize:vertical; }
+  .opt { background:#fff8e1; border:1px solid #ffe082; border-radius:8px; padding:8px 10px; margin:8px 0; font-size:14px; }
+  .opt label { display:flex; gap:8px; align-items:center; }
+  .boutons { display:flex; gap:8px; margin-top:10px; }
+  button { flex:1; padding:12px; font-size:15px; font-weight:bold; border:0; border-radius:8px; cursor:pointer; }
+  .env { background:var(--vert); color:#fff; }
+  .rej { background:#eee; color:#666; flex:0 0 30%; }
+  button:disabled { opacity:.5; }
+  .vide { text-align:center; color:#888; padding:40px 10px; }
+  .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#222; color:#fff;
+           padding:10px 18px; border-radius:20px; font-size:14px; opacity:0; transition:opacity .3s; pointer-events:none; z-index:10; }
+  .toast.on { opacity:1; }
+  .note-envoi { font-size:12px; color:#888; text-align:center; margin:4px 0 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>💬 Messages Booking</h1>
+  <span id="compteur">…</span>
+</header>
+<main>
+  <div id="note-envoi" class="note-envoi"></div>
+  <div id="liste"><div class="vide">Chargement…</div></div>
+</main>
+<div id="toast" class="toast"></div>
+
+<script>
+var SECRET = <?!= JSON.stringify(secret) ?>;
+var items = [];
+
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  setTimeout(function(){ t.classList.remove('on'); }, 2600);
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function fdate(s) {
+  if (!s) return '';
+  var p = String(s).slice(0,10).split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] : s;
+}
+
+var OPTION_TXT = { pack_linge:'🛏️ Pack linge', animal:'🐕 Animal', arrivee_anticipee:'⏰ Arrivée anticipée', depart_tardif:'⏰ Départ tardif' };
+
+function charger() {
+  google.script.run.withSuccessHandler(function(res) {
+    items = res.items || [];
+    document.getElementById('compteur').textContent = items.length;
+    document.getElementById('note-envoi').innerHTML = res.envoiActif
+      ? '✅ Envoi direct Beds24 actif : 1 clic = message envoyé au voyageur'
+      : '⚠️ Token d\'écriture pas encore configuré : la validation prépare le message mais l\'envoi sur Booking reste à faire à la main';
+    var el = document.getElementById('liste');
+    if (!items.length) { el.innerHTML = '<div class="vide">🎉 Rien à valider — tout est traité !</div>'; return; }
+    el.innerHTML = items.map(function(it, i) {
+      var badge = 'b-' + (['demande','question','probleme'].indexOf(it.categorie) >= 0 ? it.categorie : 'autre');
+      var opt = '';
+      if (it.option_type) {
+        opt = '<div class="opt"><label><input type="checkbox" id="cal-' + i + '" checked> ' +
+              (OPTION_TXT[it.option_type] || esc(it.option_type)) +
+              (it.option_detail ? ' — ' + esc(it.option_detail) : '') +
+              ' → créer l\'événement dans le calendrier DRAPS (jour d\'arrivée)</label></div>';
+      }
+      return '<div class="carte" id="carte-' + i + '">' +
+        '<div class="qui">' + esc(it.appart) + ' — ' + esc(it.voyageur) +
+        '<span class="badge ' + badge + '">' + esc(it.categorie) + '</span></div>' +
+        '<div class="dates">Séjour ' + fdate(it.arrivee) + ' → ' + fdate(it.depart) + ' · reçu le ' + esc(it.genere_le) + '</div>' +
+        (it.besoin_claudine && it.note_interne ? '<div class="alerte">⚠️ ' + esc(it.note_interne) + '</div>' : '') +
+        '<div class="question">💬 ' + esc(it.question) + '</div>' +
+        '<details><summary>Voir toute la conversation</summary><div class="conv">' + esc(it.conversation) + '</div></details>' +
+        opt +
+        '<textarea id="txt-' + i + '">' + esc(it.proposition || '') + '</textarea>' +
+        '<div class="boutons">' +
+        '<button class="rej" onclick="rejeter(' + i + ')">🚫 Ignorer</button>' +
+        '<button class="env" id="btn-' + i + '" onclick="valider(' + i + ')">✅ Valider &amp; envoyer</button>' +
+        '</div></div>';
+    }).join('');
+  }).withFailureHandler(function(e){ toast('Erreur : ' + e.message); })
+  .apiList(SECRET);
+}
+
+function valider(i) {
+  var it = items[i];
+  var txt = document.getElementById('txt-' + i).value.trim();
+  if (!txt) { toast('La réponse est vide'); return; }
+  var cal = it.option_type ? document.getElementById('cal-' + i).checked : false;
+  var btn = document.getElementById('btn-' + i);
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  google.script.run.withSuccessHandler(function(res) {
+    document.getElementById('carte-' + i).remove();
+    var n = document.querySelectorAll('.carte').length;
+    document.getElementById('compteur').textContent = n;
+    if (!n) document.getElementById('liste').innerHTML = '<div class="vide">🎉 Rien à valider — tout est traité !</div>';
+    toast(res.envoyee ? '✅ Envoyé au voyageur' + (res.calendrier ? ' + 📅 calendrier' : '')
+                      : '📋 Validé — à envoyer à la main sur Booking (' + res.raison + ')');
+  }).withFailureHandler(function(e){ btn.disabled = false; btn.textContent = '✅ Valider & envoyer'; toast('Erreur : ' + e.message); })
+  .apiValider(SECRET, it.id, txt, cal);
+}
+
+function rejeter(i) {
+  var it = items[i];
+  if (!confirm('Ignorer ce message ? (aucune réponse ne sera envoyée)')) return;
+  google.script.run.withSuccessHandler(function() {
+    document.getElementById('carte-' + i).remove();
+    var n = document.querySelectorAll('.carte').length;
+    document.getElementById('compteur').textContent = n;
+    if (!n) document.getElementById('liste').innerHTML = '<div class="vide">🎉 Rien à valider — tout est traité !</div>';
+    toast('🚫 Ignoré');
+  }).withFailureHandler(function(e){ toast('Erreur : ' + e.message); })
+  .apiRejeter(SECRET, it.id);
+}
+
+charger();
+</script>
+</body>
+</html>
