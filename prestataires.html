@@ -2,6 +2,8 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Planning Ménage</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Instrument+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -433,6 +435,10 @@ const DOW_FR  = ['D','L','M','M','J','V','S'];
 
 const params   = new URLSearchParams(window.location.search);
 const PRESTA   = (params.get('presta') || '').toLowerCase().trim();
+// Clé personnelle du lien (après le # : elle n'est envoyée ni à l'hébergeur ni dans les journaux).
+// Sans effet tant que le script Apps Script ne la vérifie pas : compatible avec les anciens liens.
+const CLE      = (new URLSearchParams(window.location.hash.slice(1)).get('k') || params.get('k') || '').trim();
+const CLE_QS   = CLE ? '&k=' + encodeURIComponent(CLE) : '';
 const PRESTA_D = PRESTA.charAt(0).toUpperCase() + PRESTA.slice(1);
 
 let allEvents = [];
@@ -456,7 +462,7 @@ async function init() {
   viewMonth = now.getMonth();
 
   try {
-    const res  = await fetch(`${APPS_SCRIPT_URL}?presta=${encodeURIComponent(PRESTA)}`);
+    const res  = await fetch(`${APPS_SCRIPT_URL}?presta=${encodeURIComponent(PRESTA)}${CLE_QS}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     allEvents = data.events || [];
