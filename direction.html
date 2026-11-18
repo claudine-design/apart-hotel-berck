@@ -2,6 +2,8 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Apart Hotel Berck — Direction</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Instrument+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -394,12 +396,18 @@ let colorMap  = {}; // logement -> couleur
 let viewYear, viewMonth;
 let activeTab = 'planning';
 
+// Clé de la page Direction : lue dans le lien (#k=…) puis mémorisée sur cet appareil.
+// Sans effet tant que le script Apps Script ne la vérifie pas : compatible avec l'existant.
+let CLE = (new URLSearchParams(window.location.hash.slice(1)).get('k') || '').trim();
+try { if (CLE) localStorage.setItem('cle_direction', CLE); else CLE = localStorage.getItem('cle_direction') || ''; } catch (e) {}
+if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+const CLE_QS = CLE ? '&k=' + encodeURIComponent(CLE) : '';
 let calAnnexe = []; // événements calendrier DRAP/CHECK IN-OUT
 
 async function fetchCalAnnexe() {
   try {
     const url = APPS_SCRIPT_URL + '?action=ical&url=' + encodeURIComponent('https://calendar.google.com/calendar/ical/8e2aa92cb418bfa01e1a133d5835ef14be76315442ba4703e67431393ffca07b%40group.calendar.google.com/public/basic.ics');
-    const res = await fetch(url);
+    const res = await fetch(url + CLE_QS);
     const data = await res.json();
     calAnnexe = data.events || [];
   } catch(e) {
@@ -451,7 +459,7 @@ async function init() {
 }
 
 async function fetchPresta(presta) {
-  const res  = await fetch(`${APPS_SCRIPT_URL}?presta=${presta}`);
+  const res  = await fetch(`${APPS_SCRIPT_URL}?presta=${presta}${CLE_QS}`);
   const data = await res.json();
   return data.events || [];
 }
@@ -459,7 +467,7 @@ async function fetchPresta(presta) {
 async function fetchCompiegne() {
   try {
     const url = APPS_SCRIPT_URL + '?action=ical&url=' + encodeURIComponent('https://api.beds24.com/ical/bookings.ics?roomid=533389');
-    const res = await fetch(url);
+    const res = await fetch(url + CLE_QS);
     const data = await res.json();
     return (data.events || []).map(e => ({ ...e, logement: 'Compiègne' }));
   } catch(e) { return []; }
